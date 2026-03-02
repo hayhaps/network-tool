@@ -31,6 +31,7 @@ from modules.vlan_config import VLANInfoThread
 from modules.network_topology import NetworkTopology
 from modules.network_diagnostic import BatchPingThread, NetworkDiagnosticThread
 from modules.network_ai_assistant import NetworkAIAssistant
+from ui.styles import LIGHT_THEME, DARK_THEME, ButtonStyles
 
 
 class MainWindow(QMainWindow):
@@ -112,28 +113,23 @@ class MainWindow(QMainWindow):
         self.is_dark_theme = not self.is_dark_theme
         
         if self.is_dark_theme:
-            # 深色主题
-            palette = QPalette()
-            palette.setColor(QPalette.Window, QColor(45, 45, 45))
-            palette.setColor(QPalette.WindowText, QColor(220, 220, 220))
-            palette.setColor(QPalette.Base, QColor(30, 30, 30))
-            palette.setColor(QPalette.AlternateBase, QColor(50, 50, 50))
-            palette.setColor(QPalette.ToolTipBase, QColor(25, 25, 25))
-            palette.setColor(QPalette.ToolTipText, QColor(220, 220, 220))
-            palette.setColor(QPalette.Text, QColor(220, 220, 220))
-            palette.setColor(QPalette.Button, QColor(53, 53, 53))
-            palette.setColor(QPalette.ButtonText, QColor(220, 220, 220))
-            palette.setColor(QPalette.BrightText, QColor(255, 0, 0))
-            palette.setColor(QPalette.Link, QColor(42, 130, 218))
-            palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
-            palette.setColor(QPalette.HighlightedText, QColor(0, 0, 0))
-            
-            self.setPalette(palette)
+            # 应用深色主题
+            self.setStyleSheet(DARK_THEME)
             self.settings.setValue("theme", "dark")
+            
+            # 更新主题按钮文本
+            for btn in self.nav_buttons:
+                if btn.objectName() == "themeButton":
+                    btn.setText("☀️ 切换主题")
         else:
-            # 浅色主题
-            self.setPalette(self.style().standardPalette())
+            # 应用浅色主题
+            self.setStyleSheet(LIGHT_THEME)
             self.settings.setValue("theme", "light")
+            
+            # 更新主题按钮文本
+            for btn in self.nav_buttons:
+                if btn.objectName() == "themeButton":
+                    btn.setText("🌙 切换主题")
     
     def export_results(self):
         """导出结果"""
@@ -170,24 +166,53 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         
+        # 应用现代样式
+        self.apply_modern_style()
+        
         # 先创建状态栏
         self.create_status_bar()
         
         # 创建主布局（水平布局）
         main_layout = QHBoxLayout()
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
         central_widget.setLayout(main_layout)
         
         # 左侧功能模块导航栏
-        self.nav_widget = QWidget()
+        self.nav_widget = QFrame()
+        self.nav_widget.setObjectName("navFrame")
         self.nav_layout = QVBoxLayout()
+        self.nav_layout.setSpacing(8)
+        self.nav_layout.setContentsMargins(16, 16, 16, 16)
         self.nav_widget.setLayout(self.nav_layout)
-        self.nav_widget.setMinimumWidth(180)
-        self.nav_widget.setMaximumWidth(220)
+        self.nav_widget.setMinimumWidth(200)
+        self.nav_widget.setMaximumWidth(240)
+        
+        # 添加Logo和标题
+        logo_layout = QHBoxLayout()
+        logo_icon = QLabel("🌐")
+        logo_icon.setFont(QFont("Arial", 24))
+        logo_icon.setAlignment(Qt.AlignCenter)
+        
+        logo_text = QLabel("网络工具箱")
+        logo_text.setFont(QFont("Arial", 14, QFont.Bold))
+        logo_text.setObjectName("titleLabel")
+        
+        logo_layout.addWidget(logo_icon)
+        logo_layout.addWidget(logo_text)
+        logo_layout.setAlignment(Qt.AlignCenter)
+        self.nav_layout.addLayout(logo_layout)
+        
+        # 添加分隔线
+        line = QFrame()
+        line.setFrameShape(QFrame.HLine)
+        line.setStyleSheet("background-color: #e0e6ed; max-height: 1px;")
+        self.nav_layout.addWidget(line)
         
         # 添加导航标题
-        nav_title = QLabel("功能模块")
-        nav_title.setFont(QFont("Arial", 12, QFont.Bold))
-        nav_title.setAlignment(Qt.AlignCenter)
+        nav_title = QLabel("📋 功能模块")
+        nav_title.setFont(QFont("Arial", 11, QFont.Bold))
+        nav_title.setStyleSheet("color: #7f8c8d; padding: 8px 0;")
         self.nav_layout.addWidget(nav_title)
         
         # 创建导航按钮
@@ -197,9 +222,18 @@ class MainWindow(QMainWindow):
         # 添加垂直 spacer，使按钮靠上
         self.nav_layout.addStretch()
         
+        # 添加主题切换按钮
+        theme_btn = QPushButton("🌙 切换主题")
+        theme_btn.setObjectName("themeButton")
+        theme_btn.clicked.connect(self.toggle_theme)
+        self.nav_layout.addWidget(theme_btn)
+        
         # 右侧内容区域
-        self.content_widget = QWidget()
+        self.content_widget = QFrame()
+        self.content_widget.setObjectName("contentFrame")
         self.content_layout = QVBoxLayout()
+        self.content_layout.setSpacing(16)
+        self.content_layout.setContentsMargins(24, 24, 24, 24)
         self.content_widget.setLayout(self.content_layout)
         
         # 创建内容显示区域
@@ -213,6 +247,11 @@ class MainWindow(QMainWindow):
         # 将导航栏和内容区域添加到主布局
         main_layout.addWidget(self.nav_widget)
         main_layout.addWidget(self.content_widget, 1)  # 内容区域占据剩余空间
+    
+    def apply_modern_style(self):
+        """应用现代化样式"""
+        self.setStyleSheet(LIGHT_THEME)
+        self.is_dark_theme = False
     
     def create_nav_buttons(self):
         """创建导航按钮"""
@@ -233,10 +272,30 @@ class MainWindow(QMainWindow):
             ("VLAN配置", self.show_vlan_page)
         ]
         
+        # 模块图标映射
+        module_icons = {
+            "Ping测试": "📡",
+            "路由追踪": "🛤️",
+            "端口扫描": "🔍",
+            "速度测试": "⚡",
+            "IP配置": "⚙️",
+            "流量监控": "📊",
+            "DNS查询": "🌐",
+            "Wi-Fi扫描": "📶",
+            "网络拓扑": "🕸️",
+            "子网计算": "🔢",
+            "网络诊断": "🔧",
+            "智能助手": "🤖",
+            "SNMP管理": "📟",
+            "VLAN配置": "🔀"
+        }
+        
         for module_name, callback in modules:
-            button = QPushButton(module_name)
+            button = QPushButton(f"{module_icons.get(module_name, '•')} {module_name}")
             button.setFont(QFont("Arial", 10))
-            button.setMinimumHeight(40)
+            button.setMinimumHeight(44)
+            button.setMaximumHeight(44)
+            button.setCursor(Qt.PointingHandCursor)
             button.clicked.connect(callback)
             self.nav_buttons.append(button)
             self.nav_layout.addWidget(button)
