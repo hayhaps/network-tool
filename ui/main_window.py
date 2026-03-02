@@ -10,10 +10,10 @@ from PyQt5.QtWidgets import (
     QPushButton, QTextEdit, QLineEdit, QLabel, QComboBox,
     QSpinBox, QGroupBox, QGridLayout, QProgressBar, QTableWidget,
     QTableWidgetItem, QHeaderView, QMessageBox, QStatusBar,
-    QSplitter, QFrame, QAction, QMenu, QMenuBar
+    QSplitter, QFrame, QAction, QMenu, QMenuBar, QCheckBox, QScrollArea
 )
 from PyQt5.QtCore import Qt, QThread, QSettings
-from PyQt5.QtGui import QFont, QColor, QPalette
+from PyQt5.QtGui import QFont, QColor, QPalette, QPixmap
 
 import sys
 import os
@@ -31,13 +31,13 @@ from modules.vlan_config import VLANInfoThread
 from modules.network_topology import NetworkTopology
 from modules.network_diagnostic import BatchPingThread, NetworkDiagnosticThread
 from modules.network_ai_assistant import NetworkAIAssistant
-from ui.styles import LIGHT_THEME, DARK_THEME, ButtonStyles
+from ui.styles import LIGHT_THEME, DARK_THEME, ENGINEER_THEME, ButtonStyles
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("网络故障排查工具 v1.1")
+        self.setWindowTitle("网络故障排查工具 v1.2  By @大笑无声")
         
         # 加载设置
         self.settings = QSettings("NetworkTool", "NetworkDiagnosticTool")
@@ -47,6 +47,8 @@ class MainWindow(QMainWindow):
         
         self.monitor_thread = None
         self.is_dark_theme = False
+        self.current_theme = 'engineer'  # 默认使用工程师主题
+        self.current_nav_button = None  # 当前选中的导航按钮
         
         self.init_ui()
         self.create_status_bar()
@@ -110,26 +112,29 @@ class MainWindow(QMainWindow):
     
     def toggle_theme(self):
         """切换主题"""
-        self.is_dark_theme = not self.is_dark_theme
-        
-        if self.is_dark_theme:
-            # 应用深色主题
-            self.setStyleSheet(DARK_THEME)
-            self.settings.setValue("theme", "dark")
-            
-            # 更新主题按钮文本
-            for btn in self.nav_buttons:
-                if btn.objectName() == "themeButton":
-                    btn.setText("☀️ 切换主题")
-        else:
-            # 应用浅色主题
+        # 循环切换主题：工程师 -> 浅色 -> 深色 -> 工程师
+        if self.current_theme == 'engineer':
+            self.current_theme = 'light'
             self.setStyleSheet(LIGHT_THEME)
             self.settings.setValue("theme", "light")
-            
-            # 更新主题按钮文本
-            for btn in self.nav_buttons:
-                if btn.objectName() == "themeButton":
+        elif self.current_theme == 'light':
+            self.current_theme = 'dark'
+            self.setStyleSheet(DARK_THEME)
+            self.settings.setValue("theme", "dark")
+        else:  # dark
+            self.current_theme = 'engineer'
+            self.setStyleSheet(ENGINEER_THEME)
+            self.settings.setValue("theme", "engineer")
+        
+        # 更新主题按钮文本
+        for btn in self.nav_buttons:
+            if btn.objectName() == "themeButton":
+                if self.current_theme == 'engineer':
+                    btn.setText("🎨 切换主题")
+                elif self.current_theme == 'light':
                     btn.setText("🌙 切换主题")
+                else:
+                    btn.setText("🔧 切换主题")
     
     def export_results(self):
         """导出结果"""
@@ -250,7 +255,9 @@ class MainWindow(QMainWindow):
     
     def apply_modern_style(self):
         """应用现代化样式"""
-        self.setStyleSheet(LIGHT_THEME)
+        # 默认使用工程师主题
+        self.current_theme = 'engineer'
+        self.setStyleSheet(ENGINEER_THEME)
         self.is_dark_theme = False
     
     def create_nav_buttons(self):
@@ -269,36 +276,58 @@ class MainWindow(QMainWindow):
             ("网络诊断", self.show_network_diagnostic_page),
             ("智能助手", self.show_ai_assistant_page),
             ("SNMP管理", self.show_snmp_page),
-            ("VLAN配置", self.show_vlan_page)
+            ("VLAN配置", self.show_vlan_page),
+            ("使用说明", self.show_help_page)
         ]
         
-        # 模块图标映射
+        # 模块图标映射（使用Unicode字符确保兼容性）
         module_icons = {
-            "Ping测试": "📡",
-            "路由追踪": "🛤️",
-            "端口扫描": "🔍",
+            "Ping测试": "●",
+            "路由追踪": "→",
+            "端口扫描": "◆",
             "速度测试": "⚡",
-            "IP配置": "⚙️",
-            "流量监控": "📊",
-            "DNS查询": "🌐",
-            "Wi-Fi扫描": "📶",
-            "网络拓扑": "🕸️",
-            "子网计算": "🔢",
-            "网络诊断": "🔧",
-            "智能助手": "🤖",
-            "SNMP管理": "📟",
-            "VLAN配置": "🔀"
+            "IP配置": "⚙",
+            "流量监控": "◈",
+            "DNS查询": "◎",
+            "Wi-Fi扫描": "◉",
+            "网络拓扑": "◊",
+            "子网计算": "#",
+            "网络诊断": "▣",
+            "智能助手": "AI",
+            "SNMP管理": "◐",
+            "VLAN配置": "◑",
+            "使用说明": "?"
         }
         
         for module_name, callback in modules:
-            button = QPushButton(f"{module_icons.get(module_name, '•')} {module_name}")
+            icon = module_icons.get(module_name, "•")
+            button_text = f"[{icon}] {module_name}" if icon != "AI" else "[AI] 智能助手"
+            button = QPushButton(button_text)
             button.setFont(QFont("Arial", 10))
             button.setMinimumHeight(44)
             button.setMaximumHeight(44)
             button.setCursor(Qt.PointingHandCursor)
-            button.clicked.connect(callback)
+            button.setProperty("selected", False)  # 添加选中属性
+            button.clicked.connect(lambda checked=False, btn=button, cb=callback: self.on_nav_button_clicked(btn, cb))
             self.nav_buttons.append(button)
             self.nav_layout.addWidget(button)
+    
+    def on_nav_button_clicked(self, button, callback):
+        """导航按钮点击处理"""
+        # 取消之前选中的按钮
+        if self.current_nav_button:
+            self.current_nav_button.setProperty("selected", False)
+            self.current_nav_button.style().unpolish(self.current_nav_button)
+            self.current_nav_button.style().polish(self.current_nav_button)
+        
+        # 设置当前按钮为选中状态
+        button.setProperty("selected", True)
+        button.style().unpolish(button)
+        button.style().polish(button)
+        self.current_nav_button = button
+        
+        # 执行回调函数
+        callback()
     
     def create_content_pages(self):
         """创建所有功能模块的内容页"""
@@ -317,6 +346,7 @@ class MainWindow(QMainWindow):
         self.ai_assistant_page = self.create_ai_assistant_content()
         self.snmp_page = self.create_snmp_content()
         self.vlan_page = self.create_vlan_content()
+        self.help_page = self.create_help_content()
         
         # 初始显示Ping测试页面
         self.show_ping_page()
@@ -607,7 +637,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(stats_group)
         
         self.connection_table = QTableWidget()
-        self.connection_table.setColumnCount(7)
+        self.connection_table.setColumnCount(6)
         self.connection_table.setHorizontalHeaderLabels([
             "协议", "本地地址", "远程地址", "状态", "PID", "进程名"
         ])
@@ -638,7 +668,8 @@ class MainWindow(QMainWindow):
         
         input_layout.addWidget(QLabel("记录类型:"), 0, 2)
         self.dns_type_combo = QComboBox()
-        self.dns_type_combo.addItems(['A', 'AAAA', 'MX', 'NS', 'TXT', 'CNAME', 'SOA', 'PTR'])
+        self.dns_type_combo.addItems(['AUTO', 'A', 'AAAA', 'MX', 'NS', 'TXT', 'CNAME', 'SOA', 'PTR'])
+        self.dns_type_combo.setItemText(0, '自动识别')
         input_layout.addWidget(self.dns_type_combo, 0, 3)
         
         self.dns_query_button = QPushButton("查询")
@@ -773,6 +804,140 @@ class MainWindow(QMainWindow):
         self.clear_content()
         self.content_layout.addWidget(self.vlan_page)
         self.status_bar.showMessage("VLAN配置模块")
+    
+    def create_help_content(self):
+        """创建使用说明内容页"""
+        page = QWidget()
+        layout = QVBoxLayout()
+        
+        # 标题
+        title_label = QLabel("使用说明")
+        title_label.setFont(QFont("Arial", 16, QFont.Bold))
+        title_label.setAlignment(Qt.AlignCenter)
+        title_label.setObjectName("titleLabel")
+        layout.addWidget(title_label)
+        
+        # 软件信息
+        info_group = QGroupBox("软件信息")
+        info_layout = QVBoxLayout()
+        
+        info_text = QTextEdit()
+        info_text.setReadOnly(True)
+        info_text.setMaximumHeight(120)
+        info_text.setHtml("""
+        <h3>网络故障排查工具 v1.2</h3>
+        <p><b>制作人：</b>@大笑无声</p>
+        <p><b>功能：</b>提供一站式网络故障排查和网络工具服务</p>
+        <p><b>特点：</b>简洁易用、功能全面、支持本地和云端AI助手</p>
+        """)
+        info_layout.addWidget(info_text)
+        info_group.setLayout(info_layout)
+        layout.addWidget(info_group)
+        
+        # 功能模块说明
+        modules_group = QGroupBox("功能模块说明")
+        modules_layout = QVBoxLayout()
+        
+        modules_text = QTextEdit()
+        modules_text.setReadOnly(True)
+        modules_text.setHtml("""
+        <h3>网络诊断工具</h3>
+        <ul>
+        <li><b>Ping测试</b> - 测试网络连通性和延迟</li>
+        <li><b>路由追踪</b> - 追踪数据包传输路径</li>
+        <li><b>端口扫描</b> - 检测目标主机开放端口</li>
+        <li><b>速度测试</b> - 测试网络带宽和速度</li>
+        <li><b>IP配置</b> - 查看和刷新网络配置</li>
+        <li><b>流量监控</b> - 实时监控网络流量</li>
+        </ul>
+        
+        <h3>网络查询工具</h3>
+        <ul>
+        <li><b>DNS查询</b> - 查询域名DNS记录</li>
+        <li><b>Wi-Fi扫描</b> - 扫描附近无线网络</li>
+        <li><b>网络拓扑</b> - 生成网络结构图</li>
+        <li><b>子网计算</b> - 计算子网信息</li>
+        <li><b>网络诊断</b> - 全面网络状态检测</li>
+        </ul>
+        
+        <h3>高级功能</h3>
+        <ul>
+        <li><b>智能助手</b> - AI网络故障诊断助手（支持豆包大模型）</li>
+        <li><b>SNMP管理</b> - 网络设备SNMP管理</li>
+        <li><b>VLAN配置</b> - 虚拟局域网配置查看</li>
+        </ul>
+        """)
+        modules_layout.addWidget(modules_text)
+        modules_group.setLayout(modules_layout)
+        layout.addWidget(modules_group)
+        
+        # 快速入门
+        quick_start_group = QGroupBox("快速入门")
+        quick_start_layout = QVBoxLayout()
+        
+        quick_start_text = QTextEdit()
+        quick_start_text.setReadOnly(True)
+        quick_start_text.setMaximumHeight(200)
+        quick_start_text.setHtml("""
+        <h3>1. 基本网络诊断</h3>
+        <p>点击左侧菜单的"Ping测试"，输入目标IP或域名（如 8.8.8.8 或 baidu.com），点击"开始Ping"即可测试网络连通性。</p>
+        
+        <h3>2. 测试网络速度</h3>
+        <p>点击"速度测试"，工具会自动选择最优服务器进行测试，显示下载速度、上传速度和延迟。</p>
+        
+        <h3>3. 使用智能助手</h3>
+        <p>点击"智能助手"，可以直接输入网络问题（如"网络很慢怎么办"），AI会提供解决方案。</p>
+        <p>如需使用云端AI，请在配置中输入豆包API Key。</p>
+        
+        <h3>4. 生成网络拓扑</h3>
+        <p>点击"网络拓扑"，输入目标IP，设置跳数，点击生成即可看到网络结构图。</p>
+        """)
+        quick_start_layout.addWidget(quick_start_text)
+        quick_start_group.setLayout(quick_start_layout)
+        layout.addWidget(quick_start_group)
+        
+        # 常见问题
+        faq_group = QGroupBox("常见问题")
+        faq_layout = QVBoxLayout()
+        
+        faq_text = QTextEdit()
+        faq_text.setReadOnly(True)
+        faq_text.setMaximumHeight(180)
+        faq_text.setHtml("""
+        <p><b>Q: 为什么某些功能需要管理员权限？</b><br>
+        A: 部分网络操作（如刷新DNS缓存）需要系统权限，请以管理员身份运行程序。</p>
+        
+        <p><b>Q: 如何获取豆包API Key？</b><br>
+        A: 访问火山引擎控制台 (console.volces.com)，注册账号后在模型推理服务中创建API Key。</p>
+        
+        <p><b>Q: 支持哪些操作系统？</b><br>
+        A: 支持 Windows、macOS 和 Linux 系统。</p>
+        
+        <p><b>Q: 如何切换主题？</b><br>
+        A: 点击左下角的"切换主题"按钮可在浅色和深色主题间切换。</p>
+        """)
+        faq_layout.addWidget(faq_text)
+        faq_group.setLayout(faq_layout)
+        layout.addWidget(faq_group)
+        
+        # 联系方式
+        contact_group = QGroupBox("关于")
+        contact_layout = QVBoxLayout()
+        
+        contact_label = QLabel("本软件由 @大笑无声 开发制作\n如有问题或建议，欢迎反馈！")
+        contact_label.setAlignment(Qt.AlignCenter)
+        contact_layout.addWidget(contact_label)
+        contact_group.setLayout(contact_layout)
+        layout.addWidget(contact_group)
+        
+        page.setLayout(layout)
+        return page
+    
+    def show_help_page(self):
+        """显示使用说明页面"""
+        self.clear_content()
+        self.content_layout.addWidget(self.help_page)
+        self.status_bar.showMessage("使用说明")
     
     def clear_content(self):
         """清空内容区域"""
@@ -1003,17 +1168,17 @@ class MainWindow(QMainWindow):
         self.status_bar.showMessage("网络连接获取完成")
     
     def start_dns_query(self):
-        domain = self.dns_domain_input.text()
-        if not domain:
+        input_str = self.dns_domain_input.text()
+        if not input_str:
             QMessageBox.warning(self, "警告", "请输入域名或IP地址")
             return
         
         record_type = self.dns_type_combo.currentText()
         self.dns_result.clear()
-        self.dns_result.append(f"正在查询 {domain} 的 {record_type} 记录...\n")
-        self.status_bar.showMessage(f"正在查询 {domain} 的 {record_type} 记录...")
+        self.dns_result.append(f"正在查询 {input_str} 的 {record_type} 记录...\n")
+        self.status_bar.showMessage(f"正在查询 {input_str} 的 {record_type} 记录...")
         
-        self.dns_query_thread = DNSQueryThread(domain, record_type)
+        self.dns_query_thread = DNSQueryThread(input_str, record_type)
         self.dns_query_thread.result_signal.connect(self.update_dns_query_result)
         self.dns_query_thread.finished_signal.connect(self.dns_query_finished)
         self.dns_query_thread.start()
@@ -1022,26 +1187,43 @@ class MainWindow(QMainWindow):
         if result['error']:
             self.dns_result.append(f"错误: {result['error']}")
         else:
-            self.dns_result.append(f"域名: {result['domain']}")
+            self.dns_result.append(f"查询对象: {result['input']}")
             self.dns_result.append(f"记录类型: {result['record_type']}")
-            self.dns_result.append(f"记录:")
-            for record in result['records']:
-                self.dns_result.append(f"  {record}")
+            self.dns_result.append(f"查询结果:")
+            
+            if result['record_type'] == 'PTR':
+                for record in result['records']:
+                    self.dns_result.append(f"  域名: {record}")
+            elif result['record_type'] == 'MX':
+                for record in result['records']:
+                    self.dns_result.append(f"  优先级: {record['preference']}, 服务器: {record['exchange']}")
+            elif result['record_type'] == 'SOA':
+                for record in result['records']:
+                    self.dns_result.append(f"  主域名服务器: {record['mname']}")
+                    self.dns_result.append(f"  管理员邮箱: {record['rname']}")
+                    self.dns_result.append(f"  序列号: {record['serial']}")
+                    self.dns_result.append(f"  刷新时间: {record['refresh']}")
+                    self.dns_result.append(f"  重试时间: {record['retry']}")
+                    self.dns_result.append(f"  过期时间: {record['expire']}")
+                    self.dns_result.append(f"  最小TTL: {record['minimum']}")
+            else:
+                for record in result['records']:
+                    self.dns_result.append(f"  {record}")
     
     def dns_query_finished(self):
         self.status_bar.showMessage("DNS查询完成")
     
     def start_dns_resolve(self):
-        hostname = self.dns_domain_input.text()
-        if not hostname:
-            QMessageBox.warning(self, "警告", "请输入域名")
+        input_str = self.dns_domain_input.text()
+        if not input_str:
+            QMessageBox.warning(self, "警告", "请输入域名或IP地址")
             return
         
         self.dns_result.clear()
-        self.dns_result.append(f"正在解析 {hostname}...\n")
-        self.status_bar.showMessage(f"正在解析 {hostname}...")
+        self.dns_result.append(f"正在解析 {input_str}...\n")
+        self.status_bar.showMessage(f"正在解析 {input_str}...")
         
-        self.dns_resolve_thread = DNSResolveThread(hostname)
+        self.dns_resolve_thread = DNSResolveThread(input_str)
         self.dns_resolve_thread.result_signal.connect(self.update_dns_resolve_result)
         self.dns_resolve_thread.finished_signal.connect(self.dns_resolve_finished)
         self.dns_resolve_thread.start()
@@ -1050,7 +1232,8 @@ class MainWindow(QMainWindow):
         if result['error']:
             self.dns_result.append(f"错误: {result['error']}")
         else:
-            self.dns_result.append(f"主机名: {result['hostname']}")
+            self.dns_result.append(f"查询对象: {result['input']}")
+            self.dns_result.append(f"主机名/域名: {result['hostname']}")
             if result['ipv4']:
                 self.dns_result.append("IPv4地址:")
                 for ip in result['ipv4']:
@@ -1207,21 +1390,48 @@ class MainWindow(QMainWindow):
         input_layout.addWidget(self.topology_hops)
         
         self.generate_topology_button = QPushButton("生成拓扑图")
+        ButtonStyles.primary(self.generate_topology_button)
         self.generate_topology_button.clicked.connect(self.generate_network_topology)
         input_layout.addWidget(self.generate_topology_button)
         
         input_group.setLayout(input_layout)
         layout.addWidget(input_group)
         
-        result_group = QGroupBox("拓扑图结果")
-        result_layout = QVBoxLayout()
+        # 创建分割器，左侧显示文本信息，右侧显示图片
+        splitter = QSplitter(Qt.Horizontal)
         
+        # 左侧：拓扑信息文本
+        info_widget = QWidget()
+        info_layout = QVBoxLayout()
         self.topology_result = QTextEdit()
         self.topology_result.setReadOnly(True)
-        result_layout.addWidget(self.topology_result)
+        info_layout.addWidget(self.topology_result)
+        info_widget.setLayout(info_layout)
+        splitter.addWidget(info_widget)
         
-        result_group.setLayout(result_layout)
-        layout.addWidget(result_group)
+        # 右侧：拓扑图片显示
+        image_widget = QWidget()
+        image_layout = QVBoxLayout()
+        
+        # 图片标签
+        self.topology_image_label = QLabel('点击"生成拓扑图"按钮生成网络拓扑图')
+        self.topology_image_label.setAlignment(Qt.AlignCenter)
+        self.topology_image_label.setMinimumSize(400, 300)
+        self.topology_image_label.setStyleSheet("background-color: #f0f0f0; border: 2px dashed #ccc;")
+        
+        # 添加滚动区域
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setWidget(self.topology_image_label)
+        
+        image_layout.addWidget(scroll_area)
+        image_widget.setLayout(image_layout)
+        splitter.addWidget(image_widget)
+        
+        # 设置分割比例
+        splitter.setSizes([300, 500])
+        
+        layout.addWidget(splitter)
         
         page.setLayout(layout)
         return page
@@ -1262,21 +1472,41 @@ class MainWindow(QMainWindow):
             # 获取拓扑数据
             topology_data = self.topology_generator.get_topology_data()
             
-            # 显示拓扑信息
-            self.topology_result.append("\n📊 网络拓扑信息:")
-            self.topology_result.append(f"节点数量: {len(topology_data['nodes'])}")
-            self.topology_result.append(f"连接数量: {len(topology_data['edges'])}")
+            # 清空之前的内容
+            self.topology_result.clear()
             
-            self.topology_result.append("\n🎯 节点信息:")
-            for node in topology_data['nodes']:
-                self.topology_result.append(f"  • {node['label']} ({node['id']}) - {node['type']}")
-            
-            # 绘制拓扑图
-            image_path = self.topology_generator.draw_topology()
-            if image_path:
-                self.topology_result.append(f"\n📷 拓扑图已保存至: {image_path}")
+            # 显示流程图
+            flowchart = topology_data.get('flowchart', '')
+            if flowchart:
+                # 设置等宽字体以正确显示流程图
+                self.topology_result.setStyleSheet("""
+                    QTextEdit {
+                        font-family: 'Courier New', 'Consolas', monospace;
+                        font-size: 10pt;
+                        background-color: #f8f9fa;
+                    }
+                """)
+                self.topology_result.setPlainText(flowchart)
+                
+                # 右侧显示提示信息
+                self.topology_image_label.setText("流程图已生成\n\n流程图显示在左侧区域\n\n包含：\n• 网络拓扑结构\n• 路由节点信息\n• 延迟数据")
+                self.topology_image_label.setStyleSheet("""
+                    QLabel {
+                        background-color: #e8f5e9;
+                        border: 2px solid #4caf50;
+                        border-radius: 8px;
+                        padding: 20px;
+                        font-size: 12pt;
+                        color: #2e7d32;
+                    }
+                """)
+            else:
+                self.topology_result.append("[错误] 流程图生成失败")
+                self.topology_image_label.setText("流程图生成失败，请检查目标IP地址")
         else:
-            self.topology_result.append("❌ 拓扑生成失败")
+            self.topology_result.clear()
+            self.topology_result.append("[错误] 拓扑生成失败")
+            self.topology_image_label.setText("拓扑生成失败，请检查目标IP地址")
         
         self.status_bar.showMessage("网络拓扑图生成完成")
     
@@ -1438,7 +1668,7 @@ class MainWindow(QMainWindow):
         self.batch_ping_thread.result_signal.connect(self.update_batch_ping_result)
         self.batch_ping_thread.finished_signal.connect(self.batch_ping_finished)
         
-        self.batch_ping_thread.run()
+        self.batch_ping_thread.start()
     
     def start_network_diagnostic(self):
         """开始网络诊断"""
@@ -1450,7 +1680,7 @@ class MainWindow(QMainWindow):
         self.diagnostic_thread.result_signal.connect(self.update_diagnostic_result)
         self.diagnostic_thread.finished_signal.connect(self.diagnostic_finished)
         
-        self.diagnostic_thread.run()
+        self.diagnostic_thread.start()
     
     def update_diagnostic_progress(self, message):
         """更新诊断进度"""
@@ -1534,6 +1764,39 @@ class MainWindow(QMainWindow):
         page = QWidget()
         layout = QVBoxLayout()
         
+        # AI配置区域
+        config_group = QGroupBox("AI模型配置")
+        config_layout = QGridLayout()
+        
+        # 模型选择
+        config_layout.addWidget(QLabel("AI模型:"), 0, 0)
+        self.ai_model_combo = QComboBox()
+        self.ai_model_combo.addItem("豆包 Lite 4K (免费)", "doubao-lite-4k")
+        self.ai_model_combo.addItem("豆包 Pro 4K", "doubao-pro-4k")
+        self.ai_model_combo.addItem("豆包 Lite 32K (免费)", "doubao-lite-32k")
+        self.ai_model_combo.setCurrentIndex(0)  # 默认选择免费模型
+        config_layout.addWidget(self.ai_model_combo, 0, 1)
+        
+        # API Key输入
+        config_layout.addWidget(QLabel("API Key:"), 1, 0)
+        self.ai_api_key_input = QLineEdit()
+        self.ai_api_key_input.setPlaceholderText("请输入豆包/火山引擎API Key (可选，不填则使用本地知识库)")
+        self.ai_api_key_input.setEchoMode(QLineEdit.Password)
+        config_layout.addWidget(self.ai_api_key_input, 1, 1)
+        
+        # 使用云端模型选项
+        self.use_cloud_model_checkbox = QCheckBox("使用云端AI模型")
+        self.use_cloud_model_checkbox.setChecked(False)  # 默认使用本地知识库
+        config_layout.addWidget(self.use_cloud_model_checkbox, 2, 0, 1, 2)
+        
+        # 保存配置按钮
+        save_config_btn = QPushButton("保存配置")
+        save_config_btn.clicked.connect(self.save_ai_config)
+        config_layout.addWidget(save_config_btn, 3, 1)
+        
+        config_group.setLayout(config_layout)
+        layout.addWidget(config_group)
+        
         # 智能助手标题
         assistant_group = QGroupBox("网络智能助手")
         assistant_layout = QVBoxLayout()
@@ -1545,7 +1808,7 @@ class MainWindow(QMainWindow):
         self.ai_chat.setStyleSheet("font-family: 'Arial', sans-serif; font-size: 10pt;")
         
         # 初始欢迎消息
-        self.ai_chat.append("🤖 网络智能助手")
+        self.ai_chat.append("[AI] 网络智能助手")
         self.ai_chat.append("欢迎使用网络智能助手！我可以帮您解决网络相关问题。")
         self.ai_chat.append("您可以询问关于网络故障排除、工具使用或网络命令的问题。")
         self.ai_chat.append("")
@@ -1559,12 +1822,15 @@ class MainWindow(QMainWindow):
         self.ai_input.returnPressed.connect(self.send_ai_query)
         
         send_button = QPushButton("发送")
+        ButtonStyles.primary(send_button)
         send_button.clicked.connect(self.send_ai_query)
         
         input_layout.addWidget(self.ai_input, 1)
         input_layout.addWidget(send_button)
         
         assistant_layout.addLayout(input_layout)
+        
+        assistant_group.setLayout(assistant_layout)
         
         # 建议问题
         suggestion_group = QGroupBox("建议问题")
@@ -1582,23 +1848,67 @@ class MainWindow(QMainWindow):
         for suggestion in suggestions:
             button = QPushButton(suggestion)
             button.setStyleSheet("text-align: left;")
-            button.clicked.connect(lambda _, s=suggestion: self.ai_input.setText(s))
+            button.clicked.connect(lambda _, s=suggestion: self.send_suggestion(s))
             self.suggestion_buttons.append(button)
             suggestion_layout.addWidget(button)
         
         suggestion_group.setLayout(suggestion_layout)
         
         # 添加到主布局
+        layout.addWidget(config_group)
         layout.addWidget(assistant_group)
         layout.addWidget(suggestion_group)
         
         page.setLayout(layout)
+        
+        # 加载保存的配置
+        self.load_ai_config()
+        
         return page
     
     def show_ai_assistant_page(self):
         """显示智能助手页面"""
         self.clear_content()
         self.content_layout.addWidget(self.ai_assistant_page)
+    
+    def send_suggestion(self, suggestion):
+        """发送建议问题"""
+        self.ai_input.setText(suggestion)
+        self.send_ai_query()
+    
+    def save_ai_config(self):
+        """保存AI配置"""
+        config = {
+            'model': self.ai_model_combo.currentData(),
+            'api_key': self.ai_api_key_input.text().strip(),
+            'use_cloud_model': self.use_cloud_model_checkbox.isChecked()
+        }
+        
+        # 保存到设置
+        self.settings.setValue("ai_config", config)
+        
+        # 更新AI助手配置
+        if hasattr(self, 'ai_assistant'):
+            self.ai_assistant.update_config(config)
+        
+        QMessageBox.information(self, "配置保存", "AI配置已保存！")
+    
+    def load_ai_config(self):
+        """加载AI配置"""
+        config = self.settings.value("ai_config", {})
+        
+        if config:
+            # 设置模型
+            model = config.get('model', 'doubao-lite-4k')
+            index = self.ai_model_combo.findData(model)
+            if index >= 0:
+                self.ai_model_combo.setCurrentIndex(index)
+            
+            # 设置API Key
+            self.ai_api_key_input.setText(config.get('api_key', ''))
+            
+            # 设置云端模型选项
+            self.use_cloud_model_checkbox.setChecked(config.get('use_cloud_model', True))
     
     def send_ai_query(self):
         """发送智能助手查询"""
@@ -1607,15 +1917,23 @@ class MainWindow(QMainWindow):
             return
         
         # 显示用户输入
-        self.ai_chat.append(f"👤 您: {query}")
+        self.ai_chat.append(f"[用户] {query}")
         self.ai_input.clear()
         
         # 处理查询
         self.status_bar.showMessage("智能助手正在思考...")
         
+        # 获取配置
+        config = {
+            'model': self.ai_model_combo.currentData(),
+            'api_key': self.ai_api_key_input.text().strip(),
+            'use_cloud_model': self.use_cloud_model_checkbox.isChecked()
+        }
+        
         # 创建智能助手
-        self.ai_assistant = NetworkAIAssistant()
+        self.ai_assistant = NetworkAIAssistant(config)
         self.ai_assistant.response_signal.connect(self.update_ai_response)
+        self.ai_assistant.error_signal.connect(self.update_ai_error)
         self.ai_assistant.finished_signal.connect(self.ai_query_finished)
         
         # 处理查询
@@ -1623,7 +1941,12 @@ class MainWindow(QMainWindow):
     
     def update_ai_response(self, response):
         """更新智能助手响应"""
-        self.ai_chat.append(f"🤖 助手: {response}")
+        self.ai_chat.append(f"[AI] {response}")
+        self.ai_chat.append("")
+    
+    def update_ai_error(self, error):
+        """更新智能助手错误"""
+        self.ai_chat.append(f"[系统] {error}")
         self.ai_chat.append("")
     
     def ai_query_finished(self):

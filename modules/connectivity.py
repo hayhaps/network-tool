@@ -84,6 +84,25 @@ class TracerouteThread(QThread):
                     self.results.append(output.strip())
                     self.result_signal.emit(output.strip())
             
+            # 检查stderr是否有错误
+            stderr_output = process.stderr.read()
+            if stderr_output and 'Operation not permitted' in stderr_output:
+                self.result_signal.emit("\n[错误] traceroute需要管理员/root权限")
+                self.result_signal.emit("请在终端中使用以下命令：")
+                if platform.system().lower() == 'windows':
+                    self.result_signal.emit("  以管理员身份运行程序")
+                else:
+                    self.result_signal.emit("  sudo traceroute -m {} {}".format(self.max_hops, self.host))
+                self.result_signal.emit("\n或者尝试使用ping命令测试网络连通性")
+            
+            self.finished_signal.emit(self.results)
+        except PermissionError:
+            self.result_signal.emit("\n[错误] traceroute需要管理员/root权限")
+            if platform.system().lower() == 'windows':
+                self.result_signal.emit("请以管理员身份运行程序")
+            else:
+                self.result_signal.emit("请使用sudo运行: sudo traceroute -m {} {}".format(self.max_hops, self.host))
+            self.result_signal.emit("\n或者尝试使用ping命令测试网络连通性")
             self.finished_signal.emit(self.results)
         except Exception as e:
             self.result_signal.emit(f"Traceroute测试失败: {str(e)}")

@@ -1,9 +1,9 @@
 import subprocess
 import threading
 import time
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal, QThread
 
-class BatchPingThread(QObject):
+class BatchPingThread(QThread):
     """批量Ping测试线程"""
     progress_signal = pyqtSignal(str)
     result_signal = pyqtSignal(dict)
@@ -106,7 +106,7 @@ class BatchPingThread(QObject):
         self.results[ip] = result
         self.progress_signal.emit(f"Ping测试完成: {ip} - {result['status']}")
 
-class NetworkDiagnosticThread(QObject):
+class NetworkDiagnosticThread(QThread):
     """网络诊断线程"""
     progress_signal = pyqtSignal(str)
     result_signal = pyqtSignal(dict)

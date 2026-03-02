@@ -8,54 +8,87 @@ DNS查询和分析模块
 import socket
 import dns.resolver
 import dns.reversename
+import ipaddress
 from PyQt5.QtCore import QThread, pyqtSignal
+
+
+def is_ip_address(input_str):
+    """判断输入是否为IP地址"""
+    try:
+        ipaddress.ip_address(input_str)
+        return True
+    except ValueError:
+        return False
 
 
 class DNSQueryThread(QThread):
     result_signal = pyqtSignal(dict)
     finished_signal = pyqtSignal()
     
-    def __init__(self, domain, record_type='A'):
+    def __init__(self, input_str, record_type='AUTO'):
         super().__init__()
-        self.domain = domain
+        self.input_str = input_str
         self.record_type = record_type.upper()
     
     def run(self):
         result = {
-            'domain': self.domain,
+            'input': self.input_str,
             'record_type': self.record_type,
             'records': [],
+            'ipv4': [],
+            'ipv6': [],
             'error': None
         }
         
         try:
+            if self.record_type == 'AUTO':
+                if is_ip_address(self.input_str):
+                    self.record_type = 'PTR'
+                else:
+                    self.record_type = 'A'
+            
             if self.record_type == 'PTR':
-                answers = self.reverse_dns_lookup(self.domain)
+                answers = self.reverse_dns_lookup(self.input_str)
                 result['records'] = answers
-            else:
-                answers = dns.resolver.resolve(self.domain, self.record_type)
+            elif self.record_type == 'A':
+                answers = dns.resolver.resolve(self.input_str, 'A')
                 for rdata in answers:
-                    if self.record_type in ['MX']:
-                        result['records'].append({
-                            'preference': rdata.preference,
-                            'exchange': str(rdata.exchange)
-                        })
-                    elif self.record_type in ['NS', 'CNAME', 'PTR']:
-                        result['records'].append(str(rdata))
-                    elif self.record_type in ['TXT']:
-                        result['records'].append(str(rdata).strip('"'))
-                    elif self.record_type in ['SOA']:
-                        result['records'].append({
-                            'mname': str(rdata.mname),
-                            'rname': str(rdata.rname),
-                            'serial': rdata.serial,
-                            'refresh': rdata.refresh,
-                            'retry': rdata.retry,
-                            'expire': rdata.expire,
-                            'minimum': rdata.minimum
-                        })
-                    else:
-                        result['records'].append(str(rdata))
+                    ip = str(rdata)
+                    result['records'].append(ip)
+                    result['ipv4'].append(ip)
+            elif self.record_type == 'AAAA':
+                answers = dns.resolver.resolve(self.input_str, 'AAAA')
+                for rdata in answers:
+                    ip = str(rdata)
+                    result['records'].append(ip)
+                    result['ipv6'].append(ip)
+            elif self.record_type == 'MX':
+                answers = dns.resolver.resolve(self.input_str, 'MX')
+                for rdata in answers:
+                    result['records'].append({
+                        'preference': rdata.preference,
+                        'exchange': str(rdata.exchange)
+                    })
+            elif self.record_type in ['NS', 'CNAME']:
+                answers = dns.resolver.resolve(self.input_str, self.record_type)
+                for rdata in answers:
+                    result['records'].append(str(rdata))
+            elif self.record_type == 'TXT':
+                answers = dns.resolver.resolve(self.input_str, 'TXT')
+                for rdata in answers:
+                    result['records'].append(str(rdata).strip('"'))
+            elif self.record_type == 'SOA':
+                answers = dns.resolver.resolve(self.input_str, 'SOA')
+                for rdata in answers:
+                    result['records'].append({
+                        'mname': str(rdata.mname),
+                        'rname': str(rdata.rname),
+                        'serial': rdata.serial,
+                        'refresh': rdata.refresh,
+                        'retry': rdata.retry,
+                        'expire': rdata.expire,
+                        'minimum': rdata.minimum
+                    })
         
         except dns.resolver.NoAnswer:
             result['error'] = f"没有找到 {self.record_type} 记录"
@@ -73,52 +106,69 @@ class DNSQueryThread(QThread):
         try:
             reverse_name = dns.reversename.from_address(ip)
             answers = dns.resolver.resolve(reverse_name, 'PTR')
-            return [str(rdata) for rdata in answers]
-        except:
-            return []
+            return [str(rdata).rstrip('.') for rdata in answers]
+        except Exception as e:
+            return [f"反向查询失败: {str(e)}"]
 
 
 class DNSResolveThread(QThread):
     result_signal = pyqtSignal(dict)
     finished_signal = pyqtSignal()
     
-    def __init__(self, hostname):
+    def __init__(self, input_str):
         super().__init__()
-        self.hostname = hostname
+        self.input_str = input_str
     
     def run(self):
         result = {
-            'hostname': self.hostname,
+            'input': self.input_str,
+            'hostname': '',
             'ipv4': [],
             'ipv6': [],
             'error': None
         }
         
-        try:
-            ipv4_addresses = socket.getaddrinfo(self.hostname, None, socket.AF_INET)
-            for addr in ipv4_addresses:
-                ip = addr[4][0]
-                if ip not in result['ipv4']:
-                    result['ipv4'].append(ip)
-        
-        except socket.gaierror:
-            pass
-        
-        try:
-            ipv6_addresses = socket.getaddrinfo(self.hostname, None, socket.AF_INET6)
-            for addr in ipv6_addresses:
-                ip = addr[4][0]
-                if ip not in result['ipv6']:
-                    result['ipv6'].append(ip)
-        
-        except socket.gaierror:
-            pass
-        
-        if not result['ipv4'] and not result['ipv6']:
-            result['error'] = "无法解析域名"
+        if is_ip_address(self.input_str):
+            result['hostname'] = self.input_str
+            reverse_names = self.reverse_dns_lookup(self.input_str)
+            if reverse_names and not reverse_names[0].startswith('反向查询失败'):
+                result['hostname'] = reverse_names[0]
+                result['ipv4'].append(self.input_str)
+            else:
+                result['error'] = "无法反向解析IP地址"
+        else:
+            result['hostname'] = self.input_str
+            try:
+                ipv4_addresses = socket.getaddrinfo(self.input_str, None, socket.AF_INET)
+                for addr in ipv4_addresses:
+                    ip = addr[4][0]
+                    if ip not in result['ipv4']:
+                        result['ipv4'].append(ip)
+            except socket.gaierror:
+                pass
+            
+            try:
+                ipv6_addresses = socket.getaddrinfo(self.input_str, None, socket.AF_INET6)
+                for addr in ipv6_addresses:
+                    ip = addr[4][0]
+                    if ip not in result['ipv6']:
+                        result['ipv6'].append(ip)
+            except socket.gaierror:
+                pass
+            
+            if not result['ipv4'] and not result['ipv6']:
+                result['error'] = "无法解析域名"
         
         self.result_signal.emit(result)
         self.finished_signal.emit()
+    
+    def reverse_dns_lookup(self, ip):
+        try:
+            reverse_name = dns.reversename.from_address(ip)
+            answers = dns.resolver.resolve(reverse_name, 'PTR')
+            return [str(rdata).rstrip('.') for rdata in answers]
+        except Exception as e:
+            return [f"反向查询失败: {str(e)}"]
 
 
 class DNSCacheThread(QThread):
