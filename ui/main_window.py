@@ -28,6 +28,9 @@ from modules.dns_query import DNSQueryThread, DNSResolveThread
 from modules.wifi_tool import WifiScannerThread
 from modules.snmp_manager import SNMPQueryThread, SNMPDeviceThread
 from modules.vlan_config import VLANInfoThread
+from modules.network_topology import NetworkTopology
+from modules.network_diagnostic import BatchPingThread, NetworkDiagnosticThread
+from modules.network_ai_assistant import NetworkAIAssistant
 
 
 class MainWindow(QMainWindow):
@@ -222,6 +225,10 @@ class MainWindow(QMainWindow):
             ("流量监控", self.show_traffic_monitor_page),
             ("DNS查询", self.show_dns_query_page),
             ("Wi-Fi扫描", self.show_wifi_scanner_page),
+            ("网络拓扑", self.show_network_topology_page),
+            ("子网计算", self.show_subnet_calculator_page),
+            ("网络诊断", self.show_network_diagnostic_page),
+            ("智能助手", self.show_ai_assistant_page),
             ("SNMP管理", self.show_snmp_page),
             ("VLAN配置", self.show_vlan_page)
         ]
@@ -245,6 +252,10 @@ class MainWindow(QMainWindow):
         self.traffic_monitor_page = self.create_traffic_monitor_content()
         self.dns_query_page = self.create_dns_query_content()
         self.wifi_scanner_page = self.create_wifi_scanner_content()
+        self.network_topology_page = self.create_network_topology_content()
+        self.subnet_calculator_page = self.create_subnet_calculator_content()
+        self.network_diagnostic_page = self.create_network_diagnostic_content()
+        self.ai_assistant_page = self.create_ai_assistant_content()
         self.snmp_page = self.create_snmp_content()
         self.vlan_page = self.create_vlan_content()
         
@@ -1116,6 +1127,449 @@ class MainWindow(QMainWindow):
     
     def vlan_finished(self):
         self.status_bar.showMessage("VLAN信息获取完成")
+    
+    def create_network_topology_content(self):
+        """创建网络拓扑图内容页"""
+        page = QWidget()
+        layout = QVBoxLayout()
+        
+        input_group = QGroupBox("网络拓扑图")
+        input_layout = QHBoxLayout()
+        
+        self.topology_target_ip = QLineEdit("8.8.8.8")
+        self.topology_target_ip.setPlaceholderText("输入目标IP地址")
+        input_layout.addWidget(QLabel("目标IP:"))
+        input_layout.addWidget(self.topology_target_ip)
+        
+        self.topology_hops = QSpinBox()
+        self.topology_hops.setRange(1, 5)
+        self.topology_hops.setValue(3)
+        input_layout.addWidget(QLabel("最大跳数:"))
+        input_layout.addWidget(self.topology_hops)
+        
+        self.generate_topology_button = QPushButton("生成拓扑图")
+        self.generate_topology_button.clicked.connect(self.generate_network_topology)
+        input_layout.addWidget(self.generate_topology_button)
+        
+        input_group.setLayout(input_layout)
+        layout.addWidget(input_group)
+        
+        result_group = QGroupBox("拓扑图结果")
+        result_layout = QVBoxLayout()
+        
+        self.topology_result = QTextEdit()
+        self.topology_result.setReadOnly(True)
+        result_layout.addWidget(self.topology_result)
+        
+        result_group.setLayout(result_layout)
+        layout.addWidget(result_group)
+        
+        page.setLayout(layout)
+        return page
+    
+    def show_network_topology_page(self):
+        """显示网络拓扑图页面"""
+        self.clear_content()
+        self.content_layout.addWidget(self.network_topology_page)
+    
+    def generate_network_topology(self):
+        """生成网络拓扑图"""
+        target_ip = self.topology_target_ip.text().strip()
+        if not target_ip:
+            QMessageBox.warning(self, "警告", "请输入目标IP地址")
+            return
+        
+        max_hops = self.topology_hops.value()
+        
+        self.topology_result.clear()
+        self.status_bar.showMessage("正在生成网络拓扑图...")
+        
+        # 创建网络拓扑生成器
+        self.topology_generator = NetworkTopology()
+        self.topology_generator.progress_signal.connect(self.update_topology_progress)
+        self.topology_generator.topology_ready.connect(self.topology_generation_finished)
+        
+        # 在后台线程中生成拓扑
+        import threading
+        threading.Thread(target=self.topology_generator.generate_topology, args=(target_ip, max_hops), daemon=True).start()
+    
+    def update_topology_progress(self, message):
+        """更新拓扑生成进度"""
+        self.topology_result.append(message)
+    
+    def topology_generation_finished(self, graph):
+        """拓扑生成完成"""
+        if graph:
+            # 获取拓扑数据
+            topology_data = self.topology_generator.get_topology_data()
+            
+            # 显示拓扑信息
+            self.topology_result.append("\n📊 网络拓扑信息:")
+            self.topology_result.append(f"节点数量: {len(topology_data['nodes'])}")
+            self.topology_result.append(f"连接数量: {len(topology_data['edges'])}")
+            
+            self.topology_result.append("\n🎯 节点信息:")
+            for node in topology_data['nodes']:
+                self.topology_result.append(f"  • {node['label']} ({node['id']}) - {node['type']}")
+            
+            # 绘制拓扑图
+            image_path = self.topology_generator.draw_topology()
+            if image_path:
+                self.topology_result.append(f"\n📷 拓扑图已保存至: {image_path}")
+        else:
+            self.topology_result.append("❌ 拓扑生成失败")
+        
+        self.status_bar.showMessage("网络拓扑图生成完成")
+    
+    def create_subnet_calculator_content(self):
+        """创建子网计算器内容页"""
+        page = QWidget()
+        layout = QVBoxLayout()
+        
+        input_group = QGroupBox("子网计算器")
+        input_layout = QGridLayout()
+        
+        input_layout.addWidget(QLabel("IP地址:"), 0, 0)
+        self.subnet_ip = QLineEdit("192.168.1.1")
+        input_layout.addWidget(self.subnet_ip, 0, 1)
+        
+        input_layout.addWidget(QLabel("子网掩码:"), 1, 0)
+        self.subnet_mask = QLineEdit("255.255.255.0")
+        input_layout.addWidget(self.subnet_mask, 1, 1)
+        
+        self.calculate_subnet_button = QPushButton("计算")
+        self.calculate_subnet_button.clicked.connect(self.calculate_subnet)
+        input_layout.addWidget(self.calculate_subnet_button, 2, 0, 1, 2)
+        
+        input_group.setLayout(input_layout)
+        layout.addWidget(input_group)
+        
+        result_group = QGroupBox("计算结果")
+        result_layout = QVBoxLayout()
+        
+        self.subnet_result = QTextEdit()
+        self.subnet_result.setReadOnly(True)
+        result_layout.addWidget(self.subnet_result)
+        
+        result_group.setLayout(result_layout)
+        layout.addWidget(result_group)
+        
+        page.setLayout(layout)
+        return page
+    
+    def show_subnet_calculator_page(self):
+        """显示子网计算器页面"""
+        self.clear_content()
+        self.content_layout.addWidget(self.subnet_calculator_page)
+    
+    def calculate_subnet(self):
+        """计算子网信息"""
+        ip = self.subnet_ip.text().strip()
+        mask = self.subnet_mask.text().strip()
+        
+        if not ip or not mask:
+            QMessageBox.warning(self, "警告", "请输入IP地址和子网掩码")
+            return
+        
+        try:
+            # 简单的子网计算
+            def ip_to_int(ip_str):
+                parts = list(map(int, ip_str.split('.')))
+                return (parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]
+            
+            def int_to_ip(ip_int):
+                return '.'.join(map(str, [(ip_int >> 24) & 0xFF, (ip_int >> 16) & 0xFF, (ip_int >> 8) & 0xFF, ip_int & 0xFF]))
+            
+            # 计算网络地址和广播地址
+            ip_int = ip_to_int(ip)
+            mask_int = ip_to_int(mask)
+            network_int = ip_int & mask_int
+            broadcast_int = network_int | (~mask_int & 0xFFFFFFFF)
+            
+            # 计算主机数量
+            host_bits = bin(mask_int).count('0')
+            max_hosts = 2 ** host_bits - 2 if host_bits > 0 else 0
+            
+            # 计算子网前缀
+            prefix = 32 - host_bits
+            
+            # 显示结果
+            self.subnet_result.clear()
+            self.subnet_result.append("📋 子网计算结果:")
+            self.subnet_result.append(f"IP地址: {ip}")
+            self.subnet_result.append(f"子网掩码: {mask}")
+            self.subnet_result.append(f"CIDR: {ip}/{prefix}")
+            self.subnet_result.append(f"网络地址: {int_to_ip(network_int)}")
+            self.subnet_result.append(f"广播地址: {int_to_ip(broadcast_int)}")
+            self.subnet_result.append(f"可用主机数: {max_hosts}")
+            self.subnet_result.append(f"第一个可用IP: {int_to_ip(network_int + 1)}")
+            self.subnet_result.append(f"最后一个可用IP: {int_to_ip(broadcast_int - 1)}")
+            
+        except Exception as e:
+            self.subnet_result.setText(f"计算出错: {str(e)}")
+    
+    def create_network_diagnostic_content(self):
+        """创建网络诊断内容页"""
+        page = QWidget()
+        layout = QVBoxLayout()
+        
+        # 批量Ping测试
+        batch_ping_group = QGroupBox("批量Ping测试")
+        batch_ping_layout = QVBoxLayout()
+        
+        self.batch_ping_input = QTextEdit()
+        self.batch_ping_input.setPlaceholderText("每行输入一个IP地址，例如：\n192.168.1.1\n8.8.8.8\n114.114.114.114")
+        self.batch_ping_input.setMinimumHeight(100)
+        batch_ping_layout.addWidget(QLabel("IP地址列表:"))
+        batch_ping_layout.addWidget(self.batch_ping_input)
+        
+        batch_ping_buttons = QHBoxLayout()
+        self.start_batch_ping_button = QPushButton("开始批量Ping")
+        self.start_batch_ping_button.clicked.connect(self.start_batch_ping)
+        batch_ping_buttons.addWidget(self.start_batch_ping_button)
+        
+        batch_ping_layout.addLayout(batch_ping_buttons)
+        batch_ping_group.setLayout(batch_ping_layout)
+        layout.addWidget(batch_ping_group)
+        
+        # 网络诊断
+        diagnostic_group = QGroupBox("网络诊断")
+        diagnostic_layout = QHBoxLayout()
+        
+        self.start_diagnostic_button = QPushButton("开始网络诊断")
+        self.start_diagnostic_button.clicked.connect(self.start_network_diagnostic)
+        diagnostic_layout.addWidget(self.start_diagnostic_button)
+        
+        diagnostic_group.setLayout(diagnostic_layout)
+        layout.addWidget(diagnostic_group)
+        
+        # 结果显示
+        result_group = QGroupBox("测试结果")
+        result_layout = QVBoxLayout()
+        
+        self.diagnostic_result = QTextEdit()
+        self.diagnostic_result.setReadOnly(True)
+        result_layout.addWidget(self.diagnostic_result)
+        
+        result_group.setLayout(result_layout)
+        layout.addWidget(result_group)
+        
+        page.setLayout(layout)
+        return page
+    
+    def show_network_diagnostic_page(self):
+        """显示网络诊断页面"""
+        self.clear_content()
+        self.content_layout.addWidget(self.network_diagnostic_page)
+    
+    def start_batch_ping(self):
+        """开始批量Ping测试"""
+        ip_list = self.batch_ping_input.toPlainText().strip().split('\n')
+        ip_list = [ip.strip() for ip in ip_list if ip.strip()]
+        
+        if not ip_list:
+            QMessageBox.warning(self, "警告", "请输入IP地址列表")
+            return
+        
+        self.diagnostic_result.clear()
+        self.status_bar.showMessage(f"正在Ping测试 {len(ip_list)} 个IP地址...")
+        
+        self.batch_ping_thread = BatchPingThread(ip_list)
+        self.batch_ping_thread.progress_signal.connect(self.update_diagnostic_progress)
+        self.batch_ping_thread.result_signal.connect(self.update_batch_ping_result)
+        self.batch_ping_thread.finished_signal.connect(self.batch_ping_finished)
+        
+        self.batch_ping_thread.run()
+    
+    def start_network_diagnostic(self):
+        """开始网络诊断"""
+        self.diagnostic_result.clear()
+        self.status_bar.showMessage("正在进行网络诊断...")
+        
+        self.diagnostic_thread = NetworkDiagnosticThread()
+        self.diagnostic_thread.progress_signal.connect(self.update_diagnostic_progress)
+        self.diagnostic_thread.result_signal.connect(self.update_diagnostic_result)
+        self.diagnostic_thread.finished_signal.connect(self.diagnostic_finished)
+        
+        self.diagnostic_thread.run()
+    
+    def update_diagnostic_progress(self, message):
+        """更新诊断进度"""
+        self.diagnostic_result.append(message)
+    
+    def update_batch_ping_result(self, results):
+        """更新批量Ping结果"""
+        self.diagnostic_result.append("\n📊 批量Ping测试结果:")
+        
+        if '在线' in results:
+            self.diagnostic_result.append("\n✅ 在线主机:")
+            for ip, result in results['在线']:
+                self.diagnostic_result.append(f"  • {ip} - 响应时间: {result['time']}ms - 丢包率: {result['packet_loss']}%")
+        
+        if '离线' in results:
+            self.diagnostic_result.append("\n❌ 离线主机:")
+            for ip, result in results['离线']:
+                self.diagnostic_result.append(f"  • {ip}")
+        
+        if '超时' in results:
+            self.diagnostic_result.append("\n⏱️ 超时主机:")
+            for ip, result in results['超时']:
+                self.diagnostic_result.append(f"  • {ip}")
+        
+        if '错误' in results:
+            self.diagnostic_result.append("\n⚠️ 错误主机:")
+            for ip, result in results['错误']:
+                self.diagnostic_result.append(f"  • {ip} - 错误: {result['error']}")
+    
+    def update_diagnostic_result(self, results):
+        """更新网络诊断结果"""
+        self.diagnostic_result.append("\n📋 网络诊断结果:")
+        
+        # 总体状态
+        overall = results.get('overall', {})
+        self.diagnostic_result.append(f"\n🎯 总体状态: {overall.get('status', '未知')}")
+        
+        if overall.get('issues'):
+            self.diagnostic_result.append("\n⚠️ 发现问题:")
+            for issue in overall.get('issues', []):
+                self.diagnostic_result.append(f"  • {issue}")
+        
+        # DNS测试
+        dns = results.get('dns', {})
+        self.diagnostic_result.append("\n🌐 DNS解析测试:")
+        self.diagnostic_result.append(f"  状态: {'正常' if dns.get('status') else '异常'}")
+        if dns.get('resolved_servers'):
+            self.diagnostic_result.append(f"  可用DNS服务器: {len(dns['resolved_servers'])}/{dns['total_servers']}")
+        
+        # 网关测试
+        gateway = results.get('gateway', {})
+        self.diagnostic_result.append("\n🏠 网关连接测试:")
+        self.diagnostic_result.append(f"  状态: {'正常' if gateway.get('status') else '异常'}")
+        if gateway.get('gateway'):
+            self.diagnostic_result.append(f"  网关地址: {gateway['gateway']}")
+        
+        # 互联网测试
+        internet = results.get('internet', {})
+        self.diagnostic_result.append("\n🌍 互联网连接测试:")
+        self.diagnostic_result.append(f"  状态: {'正常' if internet.get('status') else '异常'}")
+        if internet.get('reachable_hosts'):
+            self.diagnostic_result.append(f"  可访问主机: {len(internet['reachable_hosts'])}/{internet['total_hosts']}")
+        
+        # 延迟测试
+        latency = results.get('latency', {})
+        self.diagnostic_result.append("\n⏱️ 网络延迟测试:")
+        self.diagnostic_result.append(f"  状态: {'正常' if latency.get('status') else '异常'}")
+        if latency.get('avg_latency'):
+            self.diagnostic_result.append(f"  平均延迟: {latency['avg_latency']}ms")
+    
+    def batch_ping_finished(self):
+        """批量Ping测试完成"""
+        self.status_bar.showMessage("批量Ping测试完成")
+    
+    def diagnostic_finished(self):
+        """网络诊断完成"""
+        self.status_bar.showMessage("网络诊断完成")
+    
+    def create_ai_assistant_content(self):
+        """创建智能助手内容页"""
+        page = QWidget()
+        layout = QVBoxLayout()
+        
+        # 智能助手标题
+        assistant_group = QGroupBox("网络智能助手")
+        assistant_layout = QVBoxLayout()
+        
+        # 聊天区域
+        self.ai_chat = QTextEdit()
+        self.ai_chat.setReadOnly(True)
+        self.ai_chat.setMinimumHeight(300)
+        self.ai_chat.setStyleSheet("font-family: 'Arial', sans-serif; font-size: 10pt;")
+        
+        # 初始欢迎消息
+        self.ai_chat.append("🤖 网络智能助手")
+        self.ai_chat.append("欢迎使用网络智能助手！我可以帮您解决网络相关问题。")
+        self.ai_chat.append("您可以询问关于网络故障排除、工具使用或网络命令的问题。")
+        self.ai_chat.append("")
+        
+        assistant_layout.addWidget(self.ai_chat)
+        
+        # 输入区域
+        input_layout = QHBoxLayout()
+        self.ai_input = QLineEdit()
+        self.ai_input.setPlaceholderText("输入您的问题...")
+        self.ai_input.returnPressed.connect(self.send_ai_query)
+        
+        send_button = QPushButton("发送")
+        send_button.clicked.connect(self.send_ai_query)
+        
+        input_layout.addWidget(self.ai_input, 1)
+        input_layout.addWidget(send_button)
+        
+        assistant_layout.addLayout(input_layout)
+        
+        # 建议问题
+        suggestion_group = QGroupBox("建议问题")
+        suggestion_layout = QVBoxLayout()
+        
+        self.suggestion_buttons = []
+        suggestions = [
+            '我的网络速度很慢，怎么办？',
+            '如何使用端口扫描工具？',
+            '常用的网络命令有哪些？',
+            '网络断网了怎么排查？',
+            'DNS解析失败怎么解决？'
+        ]
+        
+        for suggestion in suggestions:
+            button = QPushButton(suggestion)
+            button.setStyleSheet("text-align: left;")
+            button.clicked.connect(lambda _, s=suggestion: self.ai_input.setText(s))
+            self.suggestion_buttons.append(button)
+            suggestion_layout.addWidget(button)
+        
+        suggestion_group.setLayout(suggestion_layout)
+        
+        # 添加到主布局
+        layout.addWidget(assistant_group)
+        layout.addWidget(suggestion_group)
+        
+        page.setLayout(layout)
+        return page
+    
+    def show_ai_assistant_page(self):
+        """显示智能助手页面"""
+        self.clear_content()
+        self.content_layout.addWidget(self.ai_assistant_page)
+    
+    def send_ai_query(self):
+        """发送智能助手查询"""
+        query = self.ai_input.text().strip()
+        if not query:
+            return
+        
+        # 显示用户输入
+        self.ai_chat.append(f"👤 您: {query}")
+        self.ai_input.clear()
+        
+        # 处理查询
+        self.status_bar.showMessage("智能助手正在思考...")
+        
+        # 创建智能助手
+        self.ai_assistant = NetworkAIAssistant()
+        self.ai_assistant.response_signal.connect(self.update_ai_response)
+        self.ai_assistant.finished_signal.connect(self.ai_query_finished)
+        
+        # 处理查询
+        self.ai_assistant.process_query(query)
+    
+    def update_ai_response(self, response):
+        """更新智能助手响应"""
+        self.ai_chat.append(f"🤖 助手: {response}")
+        self.ai_chat.append("")
+    
+    def ai_query_finished(self):
+        """智能助手查询完成"""
+        self.status_bar.showMessage("智能助手查询完成")
     
     def closeEvent(self, event):
         if self.monitor_thread:
