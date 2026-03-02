@@ -27,12 +27,41 @@ class WifiScannerThread(QThread):
             else:
                 networks = self.scan_linux()
             
-            self.result_signal.emit(networks)
+            # 检查是否有网络发现
+            if not networks:
+                # 检查是否有WiFi工具
+                if not self._check_wifi_tools():
+                    # 没有WiFi工具，返回错误信息
+                    self.result_signal.emit([{'error': 'No WiFi scanning tools found in this environment'}])
+                else:
+                    # 有工具但没有发现网络
+                    self.result_signal.emit([])
+            else:
+                self.result_signal.emit(networks)
+            
             self.finished_signal.emit()
             
         except Exception as e:
-            self.result_signal.emit([])
+            self.result_signal.emit([{'error': str(e)}])
             self.finished_signal.emit()
+    
+    def _check_wifi_tools(self):
+        """检查是否有WiFi扫描工具"""
+        tools = {
+            'windows': ['netsh'],
+            'darwin': ['/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport'],
+            'linux': ['nmcli']
+        }
+        
+        system = platform.system().lower()
+        if system in tools:
+            for tool in tools[system]:
+                try:
+                    subprocess.run([tool], capture_output=True, timeout=2)
+                    return True
+                except:
+                    pass
+        return False
     
     def scan_windows(self):
         networks = []

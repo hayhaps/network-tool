@@ -1003,6 +1003,27 @@ class MainWindow(QMainWindow):
         self.wifi_scan_thread.start()
     
     def update_wifi_table(self, networks):
+        if not networks:
+            # 没有发现网络
+            row = self.wifi_table.rowCount()
+            self.wifi_table.insertRow(row)
+            self.wifi_table.setItem(row, 0, QTableWidgetItem('无可用WiFi网络'))
+            for i in range(1, 5):
+                self.wifi_table.setItem(row, i, QTableWidgetItem('N/A'))
+            return
+        
+        # 检查是否有错误信息
+        if len(networks) == 1 and 'error' in networks[0]:
+            error_message = networks[0]['error']
+            row = self.wifi_table.rowCount()
+            self.wifi_table.insertRow(row)
+            self.wifi_table.setItem(row, 0, QTableWidgetItem('错误'))
+            self.wifi_table.setItem(row, 1, QTableWidgetItem(error_message))
+            for i in range(2, 5):
+                self.wifi_table.setItem(row, i, QTableWidgetItem('N/A'))
+            return
+        
+        # 正常显示网络列表
         for network in networks:
             row = self.wifi_table.rowCount()
             self.wifi_table.insertRow(row)
