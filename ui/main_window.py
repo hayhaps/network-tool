@@ -342,7 +342,29 @@ class MainWindow(QMainWindow):
         page = QWidget()
         layout = QVBoxLayout()
         
-        input_group = QGroupBox("端口扫描")
+        quick_scan_group = QGroupBox("快速扫描")
+        quick_scan_layout = QHBoxLayout()
+        
+        self.quick_scan_button = QPushButton("常用端口扫描")
+        self.quick_scan_button.clicked.connect(self.quick_scan_ports)
+        quick_scan_layout.addWidget(self.quick_scan_button)
+        
+        self.web_scan_button = QPushButton("Web服务端口")
+        self.web_scan_button.clicked.connect(lambda: self.start_quick_scan([80, 443, 8080, 8443, 8888, 9090]))
+        quick_scan_layout.addWidget(self.web_scan_button)
+        
+        self.database_scan_button = QPushButton("数据库端口")
+        self.database_scan_button.clicked.connect(lambda: self.start_quick_scan([1433, 1521, 3306, 5432, 6379, 27017]))
+        quick_scan_layout.addWidget(self.database_scan_button)
+        
+        self.mail_scan_button = QPushButton("邮件服务端口")
+        self.mail_scan_button.clicked.connect(lambda: self.start_quick_scan([25, 110, 143, 465, 587, 993, 995]))
+        quick_scan_layout.addWidget(self.mail_scan_button)
+        
+        quick_scan_group.setLayout(quick_scan_layout)
+        layout.addWidget(quick_scan_group)
+        
+        input_group = QGroupBox("自定义端口扫描")
         input_layout = QGridLayout()
         
         input_layout.addWidget(QLabel("目标主机:"), 0, 0)
@@ -376,7 +398,7 @@ class MainWindow(QMainWindow):
         
         self.port_table = QTableWidget()
         self.port_table.setColumnCount(4)
-        self.port_table.setHorizontalHeaderLabels(["端口", "服务", "状态", "Banner"])
+        self.port_table.setHorizontalHeaderLabels(["端口", "服务", "协议", "状态"])
         self.port_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         layout.addWidget(self.port_table)
         
@@ -763,11 +785,47 @@ class MainWindow(QMainWindow):
         self.port_table.insertRow(row)
         self.port_table.setItem(row, 0, QTableWidgetItem(str(port_info['port'])))
         self.port_table.setItem(row, 1, QTableWidgetItem(port_info['service']))
-        self.port_table.setItem(row, 2, QTableWidgetItem(port_info['status']))
-        self.port_table.setItem(row, 3, QTableWidgetItem(port_info['banner'][:50] if port_info['banner'] else 'N/A'))
+        self.port_table.setItem(row, 2, QTableWidgetItem(port_info.get('protocol', 'Unknown')))
+        self.port_table.setItem(row, 3, QTableWidgetItem(port_info['status']))
     
     def scan_finished(self, results):
         self.status_bar.showMessage(f"扫描完成，发现 {len(results)} 个开放端口")
+    
+    def quick_scan_ports(self):
+        host = self.scan_host_input.text()
+        if not host:
+            QMessageBox.warning(self, "警告", "请输入目标主机")
+            return
+        
+        common_ports = [21, 22, 23, 25, 53, 80, 110, 143, 161, 389, 443, 445, 465, 587, 636, 993, 995, 1433, 1521, 3306, 3389, 5432, 5900, 6379, 8080, 8443, 27017]
+        
+        self.port_table.setRowCount(0)
+        self.scan_progress.setValue(0)
+        self.status_bar.showMessage(f"正在快速扫描 {host} 的常用端口...")
+        
+        self.scan_thread = PortScannerThread(host, 1, 65535, max_threads=200)
+        self.scan_thread.common_ports = common_ports
+        self.scan_thread.progress_signal.connect(self.update_scan_progress)
+        self.scan_thread.result_signal.connect(self.update_port_table)
+        self.scan_thread.finished_signal.connect(self.scan_finished)
+        self.scan_thread.start()
+    
+    def start_quick_scan(self, ports):
+        host = self.scan_host_input.text()
+        if not host:
+            QMessageBox.warning(self, "警告", "请输入目标主机")
+            return
+        
+        self.port_table.setRowCount(0)
+        self.scan_progress.setValue(0)
+        self.status_bar.showMessage(f"正在快速扫描 {host} 的指定端口...")
+        
+        self.scan_thread = PortScannerThread(host, 1, 65535, max_threads=50)
+        self.scan_thread.common_ports = ports
+        self.scan_thread.progress_signal.connect(self.update_scan_progress)
+        self.scan_thread.result_signal.connect(self.update_port_table)
+        self.scan_thread.finished_signal.connect(self.scan_finished)
+        self.scan_thread.start()
     
     def start_speed_test(self):
         self.speed_log.clear()

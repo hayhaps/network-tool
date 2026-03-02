@@ -23,31 +23,62 @@ class SpeedTestThread(QThread):
     
     def run(self):
         try:
-            self.progress_signal.emit("正在初始化速度测试...")
+            self.progress_signal.emit("=" * 50)
+            self.progress_signal.emit("🚀 开始速度测试...")
+            self.progress_signal.emit("=" * 50)
+            
             st = speedtest.Speedtest()
             
-            self.progress_signal.emit("正在选择最佳服务器...")
-            st.get_best_server()
+            self.progress_signal.emit("\n📡 正在获取服务器列表...")
+            self.progress_signal.emit("-" * 50)
+            st.get_servers()
             
-            self.progress_signal.emit("正在测试下载速度...")
+            self.progress_signal.emit("\n🎯 正在选择最佳服务器...")
+            self.progress_signal.emit("-" * 50)
+            best = st.get_best_server()
+            
+            server_info = f"📍 服务器: {best.get('name', 'N/A')}"
+            server_info += f"\n🏢 运营商: {best.get('sponsor', 'N/A')}"
+            server_info += f"\n🌍 位置: {best.get('country', 'N/A')}, {best.get('location', 'N/A')}"
+            server_info += f"\n📏 距离: {best.get('d', 0):.2f} km"
+            server_info += f"\n⏱️ 延迟: {best.get('latency', 0):.2f} ms"
+            self.progress_signal.emit(server_info)
+            
+            self.progress_signal.emit("\n⬇️  正在测试下载速度...")
+            self.progress_signal.emit("-" * 50)
             download_speed = st.download() / 1_000_000
+            self.progress_signal.emit(f"   📊 当前下载速度: {download_speed:.2f} Mbps")
             
-            self.progress_signal.emit("正在测试上传速度...")
+            self.progress_signal.emit("\n⬆️  正在测试上传速度...")
+            self.progress_signal.emit("-" * 50)
             upload_speed = st.upload() / 1_000_000
+            self.progress_signal.emit(f"   📊 当前上传速度: {upload_speed:.2f} Mbps")
             
             self.results = {
                 'download': download_speed,
                 'upload': upload_speed,
                 'ping': st.results.ping,
-                'server': st.results.server['sponsor'],
-                'location': st.results.server['name']
+                'server': best.get('sponsor', 'N/A'),
+                'location': best.get('name', 'N/A'),
+                'country': best.get('country', 'N/A'),
+                'distance': best.get('d', 0)
             }
+            
+            self.progress_signal.emit("\n" + "=" * 50)
+            self.progress_signal.emit("📋 测试结果汇总")
+            self.progress_signal.emit("=" * 50)
+            self.progress_signal.emit(f"🏠 服务器位置: {best.get('country', 'N/A')} - {best.get('name', 'N/A')}")
+            self.progress_signal.emit(f"📶 延迟: {st.results.ping:.2f} ms")
+            self.progress_signal.emit(f"⬇️  下载速度: {download_speed:.2f} Mbps")
+            self.progress_signal.emit(f"⬆️  上传速度: {upload_speed:.2f} Mbps")
+            self.progress_signal.emit("=" * 50)
+            self.progress_signal.emit("✅ 速度测试完成!")
             
             self.result_signal.emit(self.results)
             self.finished_signal.emit()
             
         except Exception as e:
-            self.progress_signal.emit(f"速度测试失败: {str(e)}")
+            self.progress_signal.emit(f"\n❌ 速度测试失败: {str(e)}")
             self.finished_signal.emit()
 
 
