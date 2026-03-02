@@ -171,7 +171,8 @@ class MainWindow(QMainWindow):
         central_widget.setLayout(main_layout)
         
         self.tabs = QTabWidget()
-        self.tabs.setFont(QFont("Microsoft YaHei", 10))
+        # 使用系统默认字体，保证跨平台兼容性
+        self.tabs.setFont(QFont("Arial", 10))
         main_layout.addWidget(self.tabs)
         
         self.create_ping_tab()
@@ -216,7 +217,8 @@ class MainWindow(QMainWindow):
         layout.addWidget(input_group)
         
         self.ping_result = QTextEdit()
-        self.ping_result.setFont(QFont("Consolas", 10))
+        # 使用跨平台兼容的等宽字体
+        self.ping_result.setFont(QFont("Monaco", 10))
         self.ping_result.setReadOnly(True)
         layout.addWidget(self.ping_result)
         
@@ -249,7 +251,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(input_group)
         
         self.trace_result = QTextEdit()
-        self.trace_result.setFont(QFont("Consolas", 10))
+        self.trace_result.setFont(QFont("Monaco", 10))
         self.trace_result.setReadOnly(True)
         layout.addWidget(self.trace_result)
         
@@ -320,24 +322,24 @@ class MainWindow(QMainWindow):
         
         result_layout.addWidget(QLabel("下载速度:"), 0, 0)
         self.download_speed_label = QLabel("0 Mbps")
-        self.download_speed_label.setFont(QFont("Microsoft YaHei", 12, QFont.Bold))
+        self.download_speed_label.setFont(QFont("Arial", 12, QFont.Bold))
         result_layout.addWidget(self.download_speed_label, 0, 1)
         
         result_layout.addWidget(QLabel("上传速度:"), 1, 0)
         self.upload_speed_label = QLabel("0 Mbps")
-        self.upload_speed_label.setFont(QFont("Microsoft YaHei", 12, QFont.Bold))
+        self.upload_speed_label.setFont(QFont("Arial", 12, QFont.Bold))
         result_layout.addWidget(self.upload_speed_label, 1, 1)
         
         result_layout.addWidget(QLabel("延迟:"), 2, 0)
         self.ping_label = QLabel("0 ms")
-        self.ping_label.setFont(QFont("Microsoft YaHei", 12, QFont.Bold))
+        self.ping_label.setFont(QFont("Arial", 12, QFont.Bold))
         result_layout.addWidget(self.ping_label, 2, 1)
         
         result_group.setLayout(result_layout)
         layout.addWidget(result_group)
         
         self.speed_log = QTextEdit()
-        self.speed_log.setFont(QFont("Consolas", 10))
+        self.speed_log.setFont(QFont("Monaco", 10))
         self.speed_log.setReadOnly(True)
         layout.addWidget(self.speed_log)
         
@@ -361,7 +363,7 @@ class MainWindow(QMainWindow):
         layout.addLayout(button_layout)
         
         self.ip_config_result = QTextEdit()
-        self.ip_config_result.setFont(QFont("Consolas", 10))
+        self.ip_config_result.setFont(QFont("Monaco", 10))
         self.ip_config_result.setReadOnly(True)
         layout.addWidget(self.ip_config_result)
         
@@ -451,7 +453,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(input_group)
         
         self.dns_result = QTextEdit()
-        self.dns_result.setFont(QFont("Consolas", 10))
+        self.dns_result.setFont(QFont("Monaco", 10))
         self.dns_result.setReadOnly(True)
         layout.addWidget(self.dns_result)
         
@@ -515,7 +517,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(input_group)
         
         self.snmp_result = QTextEdit()
-        self.snmp_result.setFont(QFont("Consolas", 10))
+        self.snmp_result.setFont(QFont("Monaco", 10))
         self.snmp_result.setReadOnly(True)
         layout.addWidget(self.snmp_result)
         

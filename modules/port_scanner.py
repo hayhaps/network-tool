@@ -61,7 +61,7 @@ class PortScannerThread(QThread):
     result_signal = pyqtSignal(dict)
     finished_signal = pyqtSignal(list)
     
-    def __init__(self, host, start_port=1, end_port=1024, max_threads=100):
+    def __init__(self, host, start_port=1, end_port=1024, max_threads=200):
         super().__init__()
         self.host = host
         self.start_port = start_port
@@ -70,6 +70,7 @@ class PortScannerThread(QThread):
         self.open_ports = []
         self.scanned_count = 0
         self.total_ports = end_port - start_port + 1
+        self.lock = threading.Lock()
     
     def run(self):
         with ThreadPoolExecutor(max_workers=self.max_threads) as executor:
@@ -81,7 +82,7 @@ class PortScannerThread(QThread):
     def scan_port(self, port):
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(0.5)
+            sock.settimeout(0.3)  # 减少超时时间，提高扫描速度
             result = sock.connect_ex((self.host, port))
             
             if result == 0:
@@ -94,15 +95,17 @@ class PortScannerThread(QThread):
                     'banner': banner,
                     'status': 'Open'
                 }
-                self.open_ports.append(port_info)
+                with self.lock:
+                    self.open_ports.append(port_info)
                 self.result_signal.emit(port_info)
             
             sock.close()
         except:
             pass
         finally:
-            self.scanned_count += 1
-            progress = int((self.scanned_count / self.total_ports) * 100)
+            with self.lock:
+                self.scanned_count += 1
+                progress = int((self.scanned_count / self.total_ports) * 100)
             self.progress_signal.emit(progress)
     
     def grab_banner(self, host, port):
