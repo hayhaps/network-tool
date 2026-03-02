@@ -167,32 +167,98 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         
-        main_layout = QVBoxLayout()
+        # 先创建状态栏
+        self.create_status_bar()
+        
+        # 创建主布局（水平布局）
+        main_layout = QHBoxLayout()
         central_widget.setLayout(main_layout)
         
-        self.tabs = QTabWidget()
-        # 使用系统默认字体，保证跨平台兼容性
-        self.tabs.setFont(QFont("Arial", 10))
-        main_layout.addWidget(self.tabs)
+        # 左侧功能模块导航栏
+        self.nav_widget = QWidget()
+        self.nav_layout = QVBoxLayout()
+        self.nav_widget.setLayout(self.nav_layout)
+        self.nav_widget.setMinimumWidth(180)
+        self.nav_widget.setMaximumWidth(220)
         
-        self.create_ping_tab()
-        self.create_traceroute_tab()
-        self.create_port_scanner_tab()
-        self.create_speed_test_tab()
-        self.create_ip_config_tab()
-        self.create_traffic_monitor_tab()
-        self.create_dns_query_tab()
-        self.create_wifi_scanner_tab()
-        self.create_snmp_tab()
-        self.create_vlan_tab()
+        # 添加导航标题
+        nav_title = QLabel("功能模块")
+        nav_title.setFont(QFont("Arial", 12, QFont.Bold))
+        nav_title.setAlignment(Qt.AlignCenter)
+        self.nav_layout.addWidget(nav_title)
+        
+        # 创建导航按钮
+        self.nav_buttons = []
+        self.create_nav_buttons()
+        
+        # 添加垂直 spacer，使按钮靠上
+        self.nav_layout.addStretch()
+        
+        # 右侧内容区域
+        self.content_widget = QWidget()
+        self.content_layout = QVBoxLayout()
+        self.content_widget.setLayout(self.content_layout)
+        
+        # 创建内容显示区域
+        self.content_stack = QWidget()
+        self.content_stack_layout = QVBoxLayout()
+        self.content_stack.setLayout(self.content_stack_layout)
+        
+        # 创建所有功能模块的内容页
+        self.create_content_pages()
+        
+        # 将导航栏和内容区域添加到主布局
+        main_layout.addWidget(self.nav_widget)
+        main_layout.addWidget(self.content_widget, 1)  # 内容区域占据剩余空间
+    
+    def create_nav_buttons(self):
+        """创建导航按钮"""
+        modules = [
+            ("Ping测试", self.show_ping_page),
+            ("路由追踪", self.show_traceroute_page),
+            ("端口扫描", self.show_port_scanner_page),
+            ("速度测试", self.show_speed_test_page),
+            ("IP配置", self.show_ip_config_page),
+            ("流量监控", self.show_traffic_monitor_page),
+            ("DNS查询", self.show_dns_query_page),
+            ("Wi-Fi扫描", self.show_wifi_scanner_page),
+            ("SNMP管理", self.show_snmp_page),
+            ("VLAN配置", self.show_vlan_page)
+        ]
+        
+        for module_name, callback in modules:
+            button = QPushButton(module_name)
+            button.setFont(QFont("Arial", 10))
+            button.setMinimumHeight(40)
+            button.clicked.connect(callback)
+            self.nav_buttons.append(button)
+            self.nav_layout.addWidget(button)
+    
+    def create_content_pages(self):
+        """创建所有功能模块的内容页"""
+        # 创建所有内容页
+        self.ping_page = self.create_ping_content()
+        self.traceroute_page = self.create_traceroute_content()
+        self.port_scanner_page = self.create_port_scanner_content()
+        self.speed_test_page = self.create_speed_test_content()
+        self.ip_config_page = self.create_ip_config_content()
+        self.traffic_monitor_page = self.create_traffic_monitor_content()
+        self.dns_query_page = self.create_dns_query_content()
+        self.wifi_scanner_page = self.create_wifi_scanner_content()
+        self.snmp_page = self.create_snmp_content()
+        self.vlan_page = self.create_vlan_content()
+        
+        # 初始显示Ping测试页面
+        self.show_ping_page()
     
     def create_status_bar(self):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage("就绪")
     
-    def create_ping_tab(self):
-        tab = QWidget()
+    def create_ping_content(self):
+        """创建Ping测试内容页"""
+        page = QWidget()
         layout = QVBoxLayout()
         
         input_group = QGroupBox("Ping测试")
@@ -222,11 +288,18 @@ class MainWindow(QMainWindow):
         self.ping_result.setReadOnly(True)
         layout.addWidget(self.ping_result)
         
-        tab.setLayout(layout)
-        self.tabs.addTab(tab, "Ping测试")
+        page.setLayout(layout)
+        return page
     
-    def create_traceroute_tab(self):
-        tab = QWidget()
+    def show_ping_page(self):
+        """显示Ping测试页面"""
+        self.clear_content()
+        self.content_layout.addWidget(self.ping_page)
+        self.status_bar.showMessage("Ping测试模块")
+    
+    def create_traceroute_content(self):
+        """创建路由追踪内容页"""
+        page = QWidget()
         layout = QVBoxLayout()
         
         input_group = QGroupBox("路由追踪")
@@ -255,11 +328,18 @@ class MainWindow(QMainWindow):
         self.trace_result.setReadOnly(True)
         layout.addWidget(self.trace_result)
         
-        tab.setLayout(layout)
-        self.tabs.addTab(tab, "路由追踪")
+        page.setLayout(layout)
+        return page
     
-    def create_port_scanner_tab(self):
-        tab = QWidget()
+    def show_traceroute_page(self):
+        """显示路由追踪页面"""
+        self.clear_content()
+        self.content_layout.addWidget(self.traceroute_page)
+        self.status_bar.showMessage("路由追踪模块")
+    
+    def create_port_scanner_content(self):
+        """创建端口扫描内容页"""
+        page = QWidget()
         layout = QVBoxLayout()
         
         input_group = QGroupBox("端口扫描")
@@ -300,11 +380,18 @@ class MainWindow(QMainWindow):
         self.port_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         layout.addWidget(self.port_table)
         
-        tab.setLayout(layout)
-        self.tabs.addTab(tab, "端口扫描")
+        page.setLayout(layout)
+        return page
     
-    def create_speed_test_tab(self):
-        tab = QWidget()
+    def show_port_scanner_page(self):
+        """显示端口扫描页面"""
+        self.clear_content()
+        self.content_layout.addWidget(self.port_scanner_page)
+        self.status_bar.showMessage("端口扫描模块")
+    
+    def create_speed_test_content(self):
+        """创建速度测试内容页"""
+        page = QWidget()
         layout = QVBoxLayout()
         
         input_group = QGroupBox("速度测试")
@@ -343,11 +430,18 @@ class MainWindow(QMainWindow):
         self.speed_log.setReadOnly(True)
         layout.addWidget(self.speed_log)
         
-        tab.setLayout(layout)
-        self.tabs.addTab(tab, "速度测试")
+        page.setLayout(layout)
+        return page
     
-    def create_ip_config_tab(self):
-        tab = QWidget()
+    def show_speed_test_page(self):
+        """显示速度测试页面"""
+        self.clear_content()
+        self.content_layout.addWidget(self.speed_test_page)
+        self.status_bar.showMessage("速度测试模块")
+    
+    def create_ip_config_content(self):
+        """创建IP配置内容页"""
+        page = QWidget()
         layout = QVBoxLayout()
         
         button_layout = QHBoxLayout()
@@ -367,11 +461,18 @@ class MainWindow(QMainWindow):
         self.ip_config_result.setReadOnly(True)
         layout.addWidget(self.ip_config_result)
         
-        tab.setLayout(layout)
-        self.tabs.addTab(tab, "IP配置")
+        page.setLayout(layout)
+        return page
     
-    def create_traffic_monitor_tab(self):
-        tab = QWidget()
+    def show_ip_config_page(self):
+        """显示IP配置页面"""
+        self.clear_content()
+        self.content_layout.addWidget(self.ip_config_page)
+        self.status_bar.showMessage("IP配置模块")
+    
+    def create_traffic_monitor_content(self):
+        """创建流量监控内容页"""
+        page = QWidget()
         layout = QVBoxLayout()
         
         button_layout = QHBoxLayout()
@@ -421,11 +522,18 @@ class MainWindow(QMainWindow):
         self.connection_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         layout.addWidget(self.connection_table)
         
-        tab.setLayout(layout)
-        self.tabs.addTab(tab, "流量监控")
+        page.setLayout(layout)
+        return page
     
-    def create_dns_query_tab(self):
-        tab = QWidget()
+    def show_traffic_monitor_page(self):
+        """显示流量监控页面"""
+        self.clear_content()
+        self.content_layout.addWidget(self.traffic_monitor_page)
+        self.status_bar.showMessage("流量监控模块")
+    
+    def create_dns_query_content(self):
+        """创建DNS查询内容页"""
+        page = QWidget()
         layout = QVBoxLayout()
         
         input_group = QGroupBox("DNS查询")
@@ -457,11 +565,18 @@ class MainWindow(QMainWindow):
         self.dns_result.setReadOnly(True)
         layout.addWidget(self.dns_result)
         
-        tab.setLayout(layout)
-        self.tabs.addTab(tab, "DNS查询")
+        page.setLayout(layout)
+        return page
     
-    def create_wifi_scanner_tab(self):
-        tab = QWidget()
+    def show_dns_query_page(self):
+        """显示DNS查询页面"""
+        self.clear_content()
+        self.content_layout.addWidget(self.dns_query_page)
+        self.status_bar.showMessage("DNS查询模块")
+    
+    def create_wifi_scanner_content(self):
+        """创建Wi-Fi扫描内容页"""
+        page = QWidget()
         layout = QVBoxLayout()
         
         button_layout = QHBoxLayout()
@@ -480,11 +595,18 @@ class MainWindow(QMainWindow):
         self.wifi_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         layout.addWidget(self.wifi_table)
         
-        tab.setLayout(layout)
-        self.tabs.addTab(tab, "Wi-Fi扫描")
+        page.setLayout(layout)
+        return page
     
-    def create_snmp_tab(self):
-        tab = QWidget()
+    def show_wifi_scanner_page(self):
+        """显示Wi-Fi扫描页面"""
+        self.clear_content()
+        self.content_layout.addWidget(self.wifi_scanner_page)
+        self.status_bar.showMessage("Wi-Fi扫描模块")
+    
+    def create_snmp_content(self):
+        """创建SNMP管理内容页"""
+        page = QWidget()
         layout = QVBoxLayout()
         
         input_group = QGroupBox("SNMP查询")
@@ -521,11 +643,18 @@ class MainWindow(QMainWindow):
         self.snmp_result.setReadOnly(True)
         layout.addWidget(self.snmp_result)
         
-        tab.setLayout(layout)
-        self.tabs.addTab(tab, "SNMP管理")
+        page.setLayout(layout)
+        return page
     
-    def create_vlan_tab(self):
-        tab = QWidget()
+    def show_snmp_page(self):
+        """显示SNMP管理页面"""
+        self.clear_content()
+        self.content_layout.addWidget(self.snmp_page)
+        self.status_bar.showMessage("SNMP管理模块")
+    
+    def create_vlan_content(self):
+        """创建VLAN配置内容页"""
+        page = QWidget()
         layout = QVBoxLayout()
         
         button_layout = QHBoxLayout()
@@ -544,8 +673,22 @@ class MainWindow(QMainWindow):
         self.vlan_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         layout.addWidget(self.vlan_table)
         
-        tab.setLayout(layout)
-        self.tabs.addTab(tab, "VLAN配置")
+        page.setLayout(layout)
+        return page
+    
+    def show_vlan_page(self):
+        """显示VLAN配置页面"""
+        self.clear_content()
+        self.content_layout.addWidget(self.vlan_page)
+        self.status_bar.showMessage("VLAN配置模块")
+    
+    def clear_content(self):
+        """清空内容区域"""
+        while self.content_layout.count() > 0:
+            widget = self.content_layout.takeAt(0).widget()
+            if widget:
+                widget.hide()
+                widget.deleteLater()
     
     def start_ping(self):
         host = self.ping_host_input.text()
