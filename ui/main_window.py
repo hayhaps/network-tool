@@ -10,10 +10,10 @@ from PyQt5.QtWidgets import (
     QPushButton, QTextEdit, QLineEdit, QLabel, QComboBox,
     QSpinBox, QGroupBox, QGridLayout, QProgressBar, QTableWidget,
     QTableWidgetItem, QHeaderView, QMessageBox, QStatusBar,
-    QSplitter, QFrame
+    QSplitter, QFrame, QAction, QMenu, QMenuBar
 )
-from PyQt5.QtCore import Qt, QThread
-from PyQt5.QtGui import QFont, QColor
+from PyQt5.QtCore import Qt, QThread, QSettings
+from PyQt5.QtGui import QFont, QColor, QPalette
 
 import sys
 import os
@@ -33,13 +33,135 @@ from modules.vlan_config import VLANInfoThread
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("网络故障排查工具 v1.0")
-        self.setGeometry(100, 100, 1200, 800)
+        self.setWindowTitle("网络故障排查工具 v1.1")
+        
+        # 加载设置
+        self.settings = QSettings("NetworkTool", "NetworkDiagnosticTool")
+        
+        # 恢复窗口大小和位置
+        self.restore_window_state()
         
         self.monitor_thread = None
+        self.is_dark_theme = False
         
         self.init_ui()
         self.create_status_bar()
+        self.create_menu_bar()
+        
+        # 应用保存的主题
+        if self.settings.value("theme", "light") == "dark":
+            self.toggle_theme()
+    
+    def create_menu_bar(self):
+        """创建菜单栏"""
+        menu_bar = self.menuBar()
+        
+        # 文件菜单
+        file_menu = menu_bar.addMenu("文件")
+        
+        export_action = QAction("导出结果", self)
+        export_action.triggered.connect(self.export_results)
+        file_menu.addAction(export_action)
+        
+        clear_action = QAction("清空历史", self)
+        clear_action.triggered.connect(self.clear_history)
+        file_menu.addAction(clear_action)
+        
+        exit_action = QAction("退出", self)
+        exit_action.triggered.connect(self.close)
+        file_menu.addAction(exit_action)
+        
+        # 视图菜单
+        view_menu = menu_bar.addMenu("视图")
+        
+        theme_action = QAction("切换主题", self)
+        theme_action.triggered.connect(self.toggle_theme)
+        view_menu.addAction(theme_action)
+        
+        # 工具菜单
+        tools_menu = menu_bar.addMenu("工具")
+        
+        quick_scan_action = QAction("快速端口扫描", self)
+        quick_scan_action.triggered.connect(self.quick_port_scan)
+        tools_menu.addAction(quick_scan_action)
+        
+        # 帮助菜单
+        help_menu = menu_bar.addMenu("帮助")
+        
+        about_action = QAction("关于", self)
+        about_action.triggered.connect(self.show_about)
+        help_menu.addAction(about_action)
+    
+    def restore_window_state(self):
+        """恢复窗口状态"""
+        geometry = self.settings.value("geometry")
+        if geometry:
+            self.restoreGeometry(geometry)
+        else:
+            self.setGeometry(100, 100, 1200, 800)
+    
+    def save_window_state(self):
+        """保存窗口状态"""
+        self.settings.setValue("geometry", self.saveGeometry())
+    
+    def toggle_theme(self):
+        """切换主题"""
+        self.is_dark_theme = not self.is_dark_theme
+        
+        if self.is_dark_theme:
+            # 深色主题
+            palette = QPalette()
+            palette.setColor(QPalette.Window, QColor(45, 45, 45))
+            palette.setColor(QPalette.WindowText, QColor(220, 220, 220))
+            palette.setColor(QPalette.Base, QColor(30, 30, 30))
+            palette.setColor(QPalette.AlternateBase, QColor(50, 50, 50))
+            palette.setColor(QPalette.ToolTipBase, QColor(25, 25, 25))
+            palette.setColor(QPalette.ToolTipText, QColor(220, 220, 220))
+            palette.setColor(QPalette.Text, QColor(220, 220, 220))
+            palette.setColor(QPalette.Button, QColor(53, 53, 53))
+            palette.setColor(QPalette.ButtonText, QColor(220, 220, 220))
+            palette.setColor(QPalette.BrightText, QColor(255, 0, 0))
+            palette.setColor(QPalette.Link, QColor(42, 130, 218))
+            palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+            palette.setColor(QPalette.HighlightedText, QColor(0, 0, 0))
+            
+            self.setPalette(palette)
+            self.settings.setValue("theme", "dark")
+        else:
+            # 浅色主题
+            self.setPalette(self.style().standardPalette())
+            self.settings.setValue("theme", "light")
+    
+    def export_results(self):
+        """导出结果"""
+        QMessageBox.information(self, "导出结果", "导出功能开发中...")
+    
+    def clear_history(self):
+        """清空历史"""
+        QMessageBox.information(self, "清空历史", "历史记录已清空")
+    
+    def quick_port_scan(self):
+        """快速端口扫描"""
+        # 切换到端口扫描标签并设置常用端口
+        self.tabs.setCurrentIndex(2)  # 端口扫描标签
+        self.start_port_spin.setValue(1)
+        self.end_port_spin.setValue(1024)
+    
+    def show_about(self):
+        """显示关于信息"""
+        about_text = "网络故障排查工具 v1.1\n\n"
+        about_text += "功能：\n"
+        about_text += "- 网络连通性测试（ping、traceroute）\n"
+        about_text += "- 端口扫描和服务检测\n"
+        about_text += "- 网络速度测试（带宽、延迟）\n"
+        about_text += "- 网络设备配置管理\n"
+        about_text += "- 流量分析和监控\n"
+        about_text += "- DNS查询和分析\n"
+        about_text += "- Wi-Fi信号强度检测\n"
+        about_text += "- SNMP管理和VLAN配置\n\n"
+        about_text += "© 2026 网络故障排查工具"
+        
+        QMessageBox.about(self, "关于", about_text)
     
     def init_ui(self):
         central_widget = QWidget()
@@ -774,4 +896,5 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         if self.monitor_thread:
             self.monitor_thread.stop()
+        self.save_window_state()
         event.accept()

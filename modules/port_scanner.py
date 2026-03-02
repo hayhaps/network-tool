@@ -12,16 +12,26 @@ from PyQt5.QtCore import QThread, pyqtSignal
 
 
 COMMON_PORTS = {
+    # 常用端口
+    20: 'FTP-Data',
     21: 'FTP',
     22: 'SSH',
     23: 'Telnet',
     25: 'SMTP',
     53: 'DNS',
+    67: 'DHCP-Server',
+    68: 'DHCP-Client',
     80: 'HTTP',
     110: 'POP3',
     143: 'IMAP',
+    161: 'SNMP',
+    162: 'SNMP-Trap',
+    389: 'LDAP',
     443: 'HTTPS',
     445: 'SMB',
+    465: 'SMTPS',
+    587: 'SMTP-Submission',
+    636: 'LDAPS',
     993: 'IMAPS',
     995: 'POP3S',
     1433: 'MSSQL',
@@ -33,7 +43,16 @@ COMMON_PORTS = {
     6379: 'Redis',
     8080: 'HTTP-Proxy',
     8443: 'HTTPS-Alt',
-    27017: 'MongoDB'
+    27017: 'MongoDB',
+    27018: 'MongoDB-Server',
+    27019: 'MongoDB-Config',
+    5060: 'SIP',
+    5061: 'SIPS',
+    8888: 'HTTP-Proxy',
+    9090: 'Web-Admin',
+    11211: 'Memcached',
+    27378: 'Steam',
+    28017: 'MongoDB-Web'
 }
 
 
