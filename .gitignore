@@ -20,10 +20,15 @@ wheels/
 .installed.cfg
 *.egg
 
+# PyInstaller
+build/
+dist/
+*.spec.bak
+
 # Virtual Environment
 venv/
-ENV/
 env/
+ENV/
 
 # IDE
 .vscode/
@@ -32,16 +37,6 @@ env/
 *.swo
 *~
 
-# Logs
-logs/
-*.log
-
 # OS
 .DS_Store
 Thumbs.db
-
-# Project specific
-*.pyc
-.cache/
-cankao/
-cankao/

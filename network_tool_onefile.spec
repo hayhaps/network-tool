@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-PyInstaller配置文件
-用于打包Windows可执行文件
+PyInstaller单文件配置
+用于打包单个exe文件
 """
 
 block_cipher = None
@@ -61,19 +61,4 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=None,
-)
-
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    name='网络故障排查工具',
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=True,
 )
