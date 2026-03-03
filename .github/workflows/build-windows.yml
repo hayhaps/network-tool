@@ -1,0 +1,51 @@
+name: Build Windows Executable
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+    
+    - name: Build executable
+      run: |
+        pyinstaller --clean `
+          --name="网络故障排查工具" `
+          --windowed `
+          --onefile `
+          --add-data="data;data" `
+          --add-data="网络故障排查指导文档.md;." `
+          --hidden-import="PyQt5.QtCore" `
+          --hidden-import="PyQt5.QtGui" `
+          --hidden-import="PyQt5.QtWidgets" `
+          --hidden-import="psutil" `
+          --hidden-import="dns.resolver" `
+          --hidden-import="requests" `
+          --hidden-import="speedtest" `
+          run.py
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: network-tool-windows
+        path: dist/网络故障排查工具.exe
+        retention-days: 30

@@ -5,3 +5,4 @@ dnspython>=2.1.0
 speedtest-cli>=2.1.0
 pysnmp>=4.4.0
 python-whois>=0.7.0
+requests>=2.25.0
