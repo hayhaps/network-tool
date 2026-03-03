@@ -8,5 +8,5 @@ import sys
 import os
 
 if __name__ == '__main__':
-    from main import main
-    main()
+    # 直接执行main.py的代码
+    import main

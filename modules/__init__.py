@@ -12,7 +12,11 @@ from .traffic_monitor import TrafficMonitorThread, NetworkConnectionsThread
 from .dns_query import DNSQueryThread, DNSResolveThread
 from .wifi_tool import WifiScannerThread
 from .snmp_manager import SNMPQueryThread, SNMPDeviceThread
-from .vlan_config import VLANInfoThread
+from .network_topology import NetworkTopology
+from .network_diagnostic import BatchPingThread, NetworkDiagnosticThread
+from .network_ai_assistant import NetworkAIAssistant
+from .packet_capture import PacketCaptureThread
+from .http_watch import HTTPWatchThread
 
 __all__ = [
     'PingThread',
@@ -29,5 +33,10 @@ __all__ = [
     'WifiScannerThread',
     'SNMPQueryThread',
     'SNMPDeviceThread',
-    'VLANInfoThread'
+    'NetworkTopology',
+    'BatchPingThread',
+    'NetworkDiagnosticThread',
+    'NetworkAIAssistant',
+    'PacketCaptureThread',
+    'HTTPWatchThread'
 ]

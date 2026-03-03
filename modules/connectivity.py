@@ -18,11 +18,41 @@ class PingThread(QThread):
     
     def __init__(self, host, count=4):
         super().__init__()
-        self.host = host
+        self.host = host.strip()
         self.count = count
         self.results = []
     
+    def is_valid_host(self, host):
+        """验证主机名或IP地址是否有效"""
+        if not host:
+            return False, "主机地址不能为空"
+        
+        # 检查是否是有效的IP地址
+        ip_pattern = r'^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$'
+        match = re.match(ip_pattern, host)
+        if match:
+            # 验证每个段是否在0-255范围内
+            for i in range(1, 5):
+                octet = int(match.group(i))
+                if octet < 0 or octet > 255:
+                    return False, f"IP地址格式错误: 第{i}段数值必须在0-255之间"
+            return True, None
+        
+        # 检查是否是有效的域名
+        domain_pattern = r'^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$'
+        if re.match(domain_pattern, host):
+            return True, None
+        
+        return False, f"无效的主机地址: {host}"
+    
     def run(self):
+        # 验证主机地址
+        is_valid, error_msg = self.is_valid_host(self.host)
+        if not is_valid:
+            self.result_signal.emit(f"[错误] {error_msg}")
+            self.finished_signal.emit([f"错误: {error_msg}"])
+            return
+        
         param = '-n' if platform.system().lower() == 'windows' else '-c'
         command = ['ping', param, str(self.count), self.host]
         
@@ -56,12 +86,41 @@ class TracerouteThread(QThread):
     
     def __init__(self, host, max_hops=30):
         super().__init__()
-        self.host = host
+        self.host = host.strip()
         self.max_hops = max_hops
         self.results = []
         self.system = platform.system().lower()
     
+    def is_valid_host(self, host):
+        """验证主机名或IP地址是否有效"""
+        if not host:
+            return False, "主机地址不能为空"
+        
+        # 检查是否是有效的IP地址
+        ip_pattern = r'^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$'
+        match = re.match(ip_pattern, host)
+        if match:
+            for i in range(1, 5):
+                octet = int(match.group(i))
+                if octet < 0 or octet > 255:
+                    return False, f"IP地址格式错误: 第{i}段数值必须在0-255之间"
+            return True, None
+        
+        # 检查是否是有效的域名
+        domain_pattern = r'^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$'
+        if re.match(domain_pattern, host):
+            return True, None
+        
+        return False, f"无效的主机地址: {host}"
+    
     def run(self):
+        # 验证主机地址
+        is_valid, error_msg = self.is_valid_host(self.host)
+        if not is_valid:
+            self.result_signal.emit(f"[错误] {error_msg}")
+            self.finished_signal.emit([f"错误: {error_msg}"])
+            return
+        
         self.result_signal.emit(f"正在追踪到 {self.host} 的路由...\n")
         self.result_signal.emit(f"操作系统: {self.system.upper()}\n")
         

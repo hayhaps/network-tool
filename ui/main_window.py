@@ -27,10 +27,11 @@ from modules.traffic_monitor import TrafficMonitorThread, NetworkConnectionsThre
 from modules.dns_query import DNSQueryThread, DNSResolveThread
 from modules.wifi_tool import WifiScannerThread
 from modules.snmp_manager import SNMPQueryThread, SNMPDeviceThread
-from modules.vlan_config import VLANInfoThread
 from modules.network_topology import NetworkTopology
 from modules.network_diagnostic import BatchPingThread, NetworkDiagnosticThread
 from modules.network_ai_assistant import NetworkAIAssistant
+from modules.packet_capture import PacketCaptureThread
+from modules.http_watch import HTTPWatchThread
 from ui.styles import LIGHT_THEME, DARK_THEME, ENGINEER_THEME, ButtonStyles
 
 
@@ -113,28 +114,22 @@ class MainWindow(QMainWindow):
     def toggle_theme(self):
         """切换主题"""
         # 循环切换主题：工程师 -> 浅色 -> 深色 -> 工程师
-        if self.current_theme == 'engineer':
-            self.current_theme = 'light'
-            self.setStyleSheet(LIGHT_THEME)
-            self.settings.setValue("theme", "light")
-        elif self.current_theme == 'light':
+        if self.current_theme == 'light':
             self.current_theme = 'dark'
             self.setStyleSheet(DARK_THEME)
             self.settings.setValue("theme", "dark")
         else:  # dark
-            self.current_theme = 'engineer'
-            self.setStyleSheet(ENGINEER_THEME)
-            self.settings.setValue("theme", "engineer")
+            self.current_theme = 'light'
+            self.setStyleSheet(LIGHT_THEME)
+            self.settings.setValue("theme", "light")
         
         # 更新主题按钮文本
         for btn in self.nav_buttons:
             if btn.objectName() == "themeButton":
-                if self.current_theme == 'engineer':
-                    btn.setText("🎨 切换主题")
-                elif self.current_theme == 'light':
+                if self.current_theme == 'light':
                     btn.setText("🌙 切换主题")
                 else:
-                    btn.setText("🔧 切换主题")
+                    btn.setText("☀️ 切换主题")
     
     def export_results(self):
         """导出结果"""
@@ -162,7 +157,7 @@ class MainWindow(QMainWindow):
         about_text += "- 流量分析和监控\n"
         about_text += "- DNS查询和分析\n"
         about_text += "- Wi-Fi信号强度检测\n"
-        about_text += "- SNMP管理和VLAN配置\n\n"
+        about_text += "- SNMP管理和设备监控\n\n"
         about_text += "© 2026 网络故障排查工具"
         
         QMessageBox.about(self, "关于", about_text)
@@ -255,9 +250,9 @@ class MainWindow(QMainWindow):
     
     def apply_modern_style(self):
         """应用现代化样式"""
-        # 默认使用工程师主题
-        self.current_theme = 'engineer'
-        self.setStyleSheet(ENGINEER_THEME)
+        # 默认使用谷歌风格主题
+        self.current_theme = 'light'
+        self.setStyleSheet(LIGHT_THEME)
         self.is_dark_theme = False
     
     def create_nav_buttons(self):
@@ -276,10 +271,11 @@ class MainWindow(QMainWindow):
             ("网络诊断", self.show_network_diagnostic_page),
             ("智能助手", self.show_ai_assistant_page),
             ("SNMP管理", self.show_snmp_page),
-            ("VLAN配置", self.show_vlan_page),
+            ("抓包分析", self.show_packet_capture_page),
+            ("HTTP监控", self.show_http_watch_page),
             ("使用说明", self.show_help_page)
         ]
-        
+
         # 模块图标映射（使用Unicode字符确保兼容性）
         module_icons = {
             "Ping测试": "●",
@@ -295,7 +291,8 @@ class MainWindow(QMainWindow):
             "网络诊断": "▣",
             "智能助手": "AI",
             "SNMP管理": "◐",
-            "VLAN配置": "◑",
+            "抓包分析": "◒",
+            "HTTP监控": "◓",
             "使用说明": "?"
         }
         
@@ -345,9 +342,10 @@ class MainWindow(QMainWindow):
         self.network_diagnostic_page = self.create_network_diagnostic_content()
         self.ai_assistant_page = self.create_ai_assistant_content()
         self.snmp_page = self.create_snmp_content()
-        self.vlan_page = self.create_vlan_content()
+        self.packet_capture_page = self.create_packet_capture_content()
+        self.http_watch_page = self.create_http_watch_content()
         self.help_page = self.create_help_content()
-        
+
         # 初始显示Ping测试页面
         self.show_ping_page()
     
@@ -394,6 +392,8 @@ class MainWindow(QMainWindow):
     def show_ping_page(self):
         """显示Ping测试页面"""
         self.clear_content()
+        # 重新创建页面，因为之前的页面可能已被删除
+        self.ping_page = self.create_ping_content()
         self.content_layout.addWidget(self.ping_page)
         self.status_bar.showMessage("Ping测试模块")
     
@@ -434,6 +434,8 @@ class MainWindow(QMainWindow):
     def show_traceroute_page(self):
         """显示路由追踪页面"""
         self.clear_content()
+        # 重新创建页面，因为之前的页面可能已被删除
+        self.traceroute_page = self.create_traceroute_content()
         self.content_layout.addWidget(self.traceroute_page)
         self.status_bar.showMessage("路由追踪模块")
     
@@ -508,6 +510,8 @@ class MainWindow(QMainWindow):
     def show_port_scanner_page(self):
         """显示端口扫描页面"""
         self.clear_content()
+        # 重新创建页面，因为之前的页面可能已被删除
+        self.port_scanner_page = self.create_port_scanner_content()
         self.content_layout.addWidget(self.port_scanner_page)
         self.status_bar.showMessage("端口扫描模块")
     
@@ -558,6 +562,8 @@ class MainWindow(QMainWindow):
     def show_speed_test_page(self):
         """显示速度测试页面"""
         self.clear_content()
+        # 重新创建页面，因为之前的页面可能已被删除
+        self.speed_test_page = self.create_speed_test_content()
         self.content_layout.addWidget(self.speed_test_page)
         self.status_bar.showMessage("速度测试模块")
     
@@ -589,6 +595,8 @@ class MainWindow(QMainWindow):
     def show_ip_config_page(self):
         """显示IP配置页面"""
         self.clear_content()
+        # 重新创建页面，因为之前的页面可能已被删除
+        self.ip_config_page = self.create_ip_config_content()
         self.content_layout.addWidget(self.ip_config_page)
         self.status_bar.showMessage("IP配置模块")
     
@@ -650,6 +658,8 @@ class MainWindow(QMainWindow):
     def show_traffic_monitor_page(self):
         """显示流量监控页面"""
         self.clear_content()
+        # 重新创建页面，因为之前的页面可能已被删除
+        self.traffic_monitor_page = self.create_traffic_monitor_content()
         self.content_layout.addWidget(self.traffic_monitor_page)
         self.status_bar.showMessage("流量监控模块")
     
@@ -694,6 +704,8 @@ class MainWindow(QMainWindow):
     def show_dns_query_page(self):
         """显示DNS查询页面"""
         self.clear_content()
+        # 重新创建页面，因为之前的页面可能已被删除
+        self.dns_query_page = self.create_dns_query_content()
         self.content_layout.addWidget(self.dns_query_page)
         self.status_bar.showMessage("DNS查询模块")
     
@@ -724,6 +736,8 @@ class MainWindow(QMainWindow):
     def show_wifi_scanner_page(self):
         """显示Wi-Fi扫描页面"""
         self.clear_content()
+        # 重新创建页面，因为之前的页面可能已被删除
+        self.wifi_scanner_page = self.create_wifi_scanner_content()
         self.content_layout.addWidget(self.wifi_scanner_page)
         self.status_bar.showMessage("Wi-Fi扫描模块")
     
@@ -772,39 +786,152 @@ class MainWindow(QMainWindow):
     def show_snmp_page(self):
         """显示SNMP管理页面"""
         self.clear_content()
+        # 重新创建页面，因为之前的页面可能已被删除
+        self.snmp_page = self.create_snmp_content()
         self.content_layout.addWidget(self.snmp_page)
         self.status_bar.showMessage("SNMP管理模块")
-    
-    def create_vlan_content(self):
-        """创建VLAN配置内容页"""
+
+    def create_packet_capture_content(self):
+        """创建抓包分析内容页"""
         page = QWidget()
         layout = QVBoxLayout()
-        
-        button_layout = QHBoxLayout()
-        
-        self.get_vlan_button = QPushButton("查看VLAN信息")
-        self.get_vlan_button.clicked.connect(self.get_vlan_info)
-        button_layout.addWidget(self.get_vlan_button)
-        
-        layout.addLayout(button_layout)
-        
-        self.vlan_table = QTableWidget()
-        self.vlan_table.setColumnCount(4)
-        self.vlan_table.setHorizontalHeaderLabels([
-            "名称", "VLAN ID", "接口", "状态"
+
+        # 控制区域
+        control_group = QGroupBox("抓包控制")
+        control_layout = QGridLayout()
+
+        # 协议过滤
+        control_layout.addWidget(QLabel("协议过滤:"), 0, 0)
+        self.capture_protocol_combo = QComboBox()
+        self.capture_protocol_combo.addItem("全部", "")
+        self.capture_protocol_combo.addItem("TCP", "TCP")
+        self.capture_protocol_combo.addItem("UDP", "UDP")
+        self.capture_protocol_combo.addItem("ICMP", "ICMP")
+        control_layout.addWidget(self.capture_protocol_combo, 0, 1)
+
+        # 端口过滤
+        control_layout.addWidget(QLabel("端口过滤:"), 0, 2)
+        self.capture_port_input = QLineEdit()
+        self.capture_port_input.setPlaceholderText("输入端口号(可选)")
+        control_layout.addWidget(self.capture_port_input, 0, 3)
+
+        # 开始/停止按钮
+        self.start_capture_button = QPushButton("开始抓包")
+        self.start_capture_button.clicked.connect(self.start_packet_capture)
+        control_layout.addWidget(self.start_capture_button, 0, 4)
+
+        self.stop_capture_button = QPushButton("停止抓包")
+        self.stop_capture_button.clicked.connect(self.stop_packet_capture)
+        self.stop_capture_button.setEnabled(False)
+        control_layout.addWidget(self.stop_capture_button, 0, 5)
+
+        # 清空按钮
+        clear_button = QPushButton("清空")
+        clear_button.clicked.connect(self.clear_packet_capture)
+        control_layout.addWidget(clear_button, 0, 6)
+
+        control_group.setLayout(control_layout)
+        layout.addWidget(control_group)
+
+        # 统计信息
+        stats_group = QGroupBox("统计信息")
+        stats_layout = QHBoxLayout()
+        self.capture_count_label = QLabel("数据包: 0")
+        self.capture_bytes_label = QLabel("字节数: 0")
+        stats_layout.addWidget(self.capture_count_label)
+        stats_layout.addWidget(self.capture_bytes_label)
+        stats_layout.addStretch()
+        stats_group.setLayout(stats_layout)
+        layout.addWidget(stats_group)
+
+        # 数据包列表
+        self.packet_table = QTableWidget()
+        self.packet_table.setColumnCount(7)
+        self.packet_table.setHorizontalHeaderLabels([
+            "时间", "源IP", "目标IP", "协议", "源端口", "目标端口", "信息"
         ])
-        self.vlan_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        layout.addWidget(self.vlan_table)
-        
+        self.packet_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.packet_table.setSelectionBehavior(QTableWidget.SelectRows)
+        layout.addWidget(self.packet_table)
+
         page.setLayout(layout)
         return page
-    
-    def show_vlan_page(self):
-        """显示VLAN配置页面"""
+
+    def show_packet_capture_page(self):
+        """显示抓包分析页面"""
         self.clear_content()
-        self.content_layout.addWidget(self.vlan_page)
-        self.status_bar.showMessage("VLAN配置模块")
-    
+        self.packet_capture_page = self.create_packet_capture_content()
+        self.content_layout.addWidget(self.packet_capture_page)
+        self.status_bar.showMessage("抓包分析模块")
+
+    def create_http_watch_content(self):
+        """创建HTTP监控内容页"""
+        page = QWidget()
+        layout = QVBoxLayout()
+
+        # 控制区域
+        control_group = QGroupBox("HTTP代理设置")
+        control_layout = QGridLayout()
+
+        # 代理端口
+        control_layout.addWidget(QLabel("代理端口:"), 0, 0)
+        self.http_proxy_port = QSpinBox()
+        self.http_proxy_port.setRange(1024, 65535)
+        self.http_proxy_port.setValue(8080)
+        control_layout.addWidget(self.http_proxy_port, 0, 1)
+
+        # 主机过滤
+        control_layout.addWidget(QLabel("主机过滤:"), 0, 2)
+        self.http_host_filter = QLineEdit()
+        self.http_host_filter.setPlaceholderText("输入主机名过滤(可选)")
+        control_layout.addWidget(self.http_host_filter, 0, 3)
+
+        # 开始/停止按钮
+        self.start_http_button = QPushButton("启动代理")
+        self.start_http_button.clicked.connect(self.start_http_watch)
+        control_layout.addWidget(self.start_http_button, 0, 4)
+
+        self.stop_http_button = QPushButton("停止代理")
+        self.stop_http_button.clicked.connect(self.stop_http_watch)
+        self.stop_http_button.setEnabled(False)
+        control_layout.addWidget(self.stop_http_button, 0, 5)
+
+        # 清空按钮
+        clear_http_button = QPushButton("清空")
+        clear_http_button.clicked.connect(self.clear_http_watch)
+        control_layout.addWidget(clear_http_button, 0, 6)
+
+        control_group.setLayout(control_layout)
+        layout.addWidget(control_group)
+
+        # 代理信息
+        info_group = QGroupBox("代理信息")
+        info_layout = QVBoxLayout()
+        self.http_proxy_info = QLabel("代理地址: 127.0.0.1:8080\n请在浏览器中设置HTTP代理为上述地址")
+        info_layout.addWidget(self.http_proxy_info)
+        info_group.setLayout(info_layout)
+        layout.addWidget(info_group)
+
+        # 请求列表
+        self.http_table = QTableWidget()
+        self.http_table.setColumnCount(7)
+        self.http_table.setHorizontalHeaderLabels([
+            "ID", "时间", "方法", "URL", "状态码", "大小", "耗时(ms)"
+        ])
+        self.http_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.http_table.setSelectionBehavior(QTableWidget.SelectRows)
+        layout.addWidget(self.http_table)
+
+        page.setLayout(layout)
+        return page
+
+    def show_http_watch_page(self):
+        """显示HTTP监控页面"""
+        self.clear_content()
+        self.http_watch_page = self.create_http_watch_content()
+        self.content_layout.addWidget(self.http_watch_page)
+        self.status_bar.showMessage("HTTP监控模块")
+
     def create_help_content(self):
         """创建使用说明内容页"""
         page = QWidget()
@@ -863,8 +990,8 @@ class MainWindow(QMainWindow):
         <h3>高级功能</h3>
         <ul>
         <li><b>智能助手</b> - AI网络故障诊断助手（支持豆包大模型）</li>
-        <li><b>SNMP管理</b> - 网络设备SNMP管理</li>
-        <li><b>VLAN配置</b> - 虚拟局域网配置查看</li>
+        <li><b>SNMP管理</b> - 网络设备SNMP管理和监控</li>
+        <li><b>网络拓扑</b> - 可视化网络拓扑结构分析</li>
         </ul>
         """)
         modules_layout.addWidget(modules_text)
@@ -936,6 +1063,8 @@ class MainWindow(QMainWindow):
     def show_help_page(self):
         """显示使用说明页面"""
         self.clear_content()
+        # 重新创建页面，因为之前的页面可能已被删除
+        self.help_page = self.create_help_content()
         self.content_layout.addWidget(self.help_page)
         self.status_bar.showMessage("使用说明")
     
@@ -963,10 +1092,17 @@ class MainWindow(QMainWindow):
         self.ping_thread.start()
     
     def update_ping_result(self, result):
-        self.ping_result.append(result)
+        try:
+            if hasattr(self, 'ping_result') and self.ping_result:
+                self.ping_result.append(result)
+        except RuntimeError:
+            pass
     
     def ping_finished(self, results):
-        self.status_bar.showMessage("Ping完成")
+        try:
+            self.status_bar.showMessage("Ping完成")
+        except RuntimeError:
+            pass
     
     def start_traceroute(self):
         host = self.trace_host_input.text()
@@ -984,10 +1120,17 @@ class MainWindow(QMainWindow):
         self.trace_thread.start()
     
     def update_trace_result(self, result):
-        self.trace_result.append(result)
+        try:
+            if hasattr(self, 'trace_result') and self.trace_result:
+                self.trace_result.append(result)
+        except RuntimeError:
+            pass
     
     def trace_finished(self, results):
-        self.status_bar.showMessage("路由追踪完成")
+        try:
+            self.status_bar.showMessage("路由追踪完成")
+        except RuntimeError:
+            pass
     
     def start_port_scan(self):
         host = self.scan_host_input.text()
@@ -1013,18 +1156,29 @@ class MainWindow(QMainWindow):
         self.scan_thread.start()
     
     def update_scan_progress(self, progress):
-        self.scan_progress.setValue(progress)
+        try:
+            if hasattr(self, 'scan_progress') and self.scan_progress:
+                self.scan_progress.setValue(progress)
+        except RuntimeError:
+            pass
     
     def update_port_table(self, port_info):
-        row = self.port_table.rowCount()
-        self.port_table.insertRow(row)
-        self.port_table.setItem(row, 0, QTableWidgetItem(str(port_info['port'])))
-        self.port_table.setItem(row, 1, QTableWidgetItem(port_info['service']))
-        self.port_table.setItem(row, 2, QTableWidgetItem(port_info.get('protocol', 'Unknown')))
-        self.port_table.setItem(row, 3, QTableWidgetItem(port_info['status']))
+        try:
+            if hasattr(self, 'port_table') and self.port_table:
+                row = self.port_table.rowCount()
+                self.port_table.insertRow(row)
+                self.port_table.setItem(row, 0, QTableWidgetItem(str(port_info['port'])))
+                self.port_table.setItem(row, 1, QTableWidgetItem(port_info['service']))
+                self.port_table.setItem(row, 2, QTableWidgetItem(port_info.get('protocol', 'Unknown')))
+                self.port_table.setItem(row, 3, QTableWidgetItem(port_info['status']))
+        except RuntimeError:
+            pass
     
     def scan_finished(self, results):
-        self.status_bar.showMessage(f"扫描完成，发现 {len(results)} 个开放端口")
+        try:
+            self.status_bar.showMessage(f"扫描完成，发现 {len(results)} 个开放端口")
+        except RuntimeError:
+            pass
     
     def quick_scan_ports(self):
         host = self.scan_host_input.text()
@@ -1075,16 +1229,32 @@ class MainWindow(QMainWindow):
         self.speed_thread.start()
     
     def update_speed_log(self, message):
-        self.speed_log.append(message)
+        try:
+            if hasattr(self, 'speed_log') and self.speed_log:
+                self.speed_log.append(message)
+        except RuntimeError:
+            # 忽略已删除对象的错误
+            pass
     
     def update_speed_result(self, result):
-        self.download_speed_label.setText(f"{result['download']:.2f} Mbps")
-        self.upload_speed_label.setText(f"{result['upload']:.2f} Mbps")
-        self.ping_label.setText(f"{result['ping']:.2f} ms")
+        try:
+            if hasattr(self, 'download_speed_label') and self.download_speed_label:
+                self.download_speed_label.setText(f"{result['download']:.2f} Mbps")
+            if hasattr(self, 'upload_speed_label') and self.upload_speed_label:
+                self.upload_speed_label.setText(f"{result['upload']:.2f} Mbps")
+            if hasattr(self, 'ping_label') and self.ping_label:
+                self.ping_label.setText(f"{result['ping']:.2f} ms")
+        except RuntimeError:
+            # 忽略已删除对象的错误
+            pass
     
     def speed_test_finished(self):
-        self.speed_test_button.setEnabled(True)
-        self.status_bar.showMessage("速度测试完成")
+        try:
+            if hasattr(self, 'speed_test_button') and self.speed_test_button:
+                self.speed_test_button.setEnabled(True)
+            self.status_bar.showMessage("速度测试完成")
+        except RuntimeError:
+            pass
     
     def get_ip_config(self):
         self.ip_config_result.clear()
@@ -1097,10 +1267,17 @@ class MainWindow(QMainWindow):
         self.ip_config_thread.start()
     
     def update_ip_config(self, result):
-        self.ip_config_result.append(result)
+        try:
+            if hasattr(self, 'ip_config_result') and self.ip_config_result:
+                self.ip_config_result.append(result)
+        except RuntimeError:
+            pass
     
     def ip_config_finished(self, config):
-        self.status_bar.showMessage("IP配置获取完成")
+        try:
+            self.status_bar.showMessage("IP配置获取完成")
+        except RuntimeError:
+            pass
     
     def flush_dns(self):
         self.ip_config_result.clear()
@@ -1113,10 +1290,17 @@ class MainWindow(QMainWindow):
         self.dns_flush_thread.start()
     
     def update_dns_flush(self, result):
-        self.ip_config_result.append(result)
+        try:
+            if hasattr(self, 'ip_config_result') and self.ip_config_result:
+                self.ip_config_result.append(result)
+        except RuntimeError:
+            pass
     
     def dns_flush_finished(self):
-        self.status_bar.showMessage("DNS缓存刷新完成")
+        try:
+            self.status_bar.showMessage("DNS缓存刷新完成")
+        except RuntimeError:
+            pass
     
     def start_traffic_monitor(self):
         self.start_monitor_button.setEnabled(False)
@@ -1130,10 +1314,18 @@ class MainWindow(QMainWindow):
     def update_traffic_stats(self, stats):
         from utils.network_utils import format_bytes, format_speed
         
-        self.upload_speed_value.setText(format_speed(stats['upload_speed']))
-        self.download_speed_value.setText(format_speed(stats['download_speed']))
-        self.total_upload_value.setText(format_bytes(stats['total_sent']))
-        self.total_download_value.setText(format_bytes(stats['total_recv']))
+        try:
+            if hasattr(self, 'upload_speed_value') and self.upload_speed_value:
+                self.upload_speed_value.setText(format_speed(stats['upload_speed']))
+            if hasattr(self, 'download_speed_value') and self.download_speed_value:
+                self.download_speed_value.setText(format_speed(stats['download_speed']))
+            if hasattr(self, 'total_upload_value') and self.total_upload_value:
+                self.total_upload_value.setText(format_bytes(stats['total_sent']))
+            if hasattr(self, 'total_download_value') and self.total_download_value:
+                self.total_download_value.setText(format_bytes(stats['total_recv']))
+        except RuntimeError:
+            # 忽略已删除对象的错误
+            pass
     
     def stop_traffic_monitor(self):
         if self.monitor_thread:
@@ -1154,18 +1346,25 @@ class MainWindow(QMainWindow):
         self.connections_thread.start()
     
     def update_connections_table(self, connections):
-        for conn in connections:
-            row = self.connection_table.rowCount()
-            self.connection_table.insertRow(row)
-            self.connection_table.setItem(row, 0, QTableWidgetItem(conn['type']))
-            self.connection_table.setItem(row, 1, QTableWidgetItem(conn['local_addr']))
-            self.connection_table.setItem(row, 2, QTableWidgetItem(conn['remote_addr']))
-            self.connection_table.setItem(row, 3, QTableWidgetItem(conn['status']))
-            self.connection_table.setItem(row, 4, QTableWidgetItem(str(conn['pid'])))
-            self.connection_table.setItem(row, 5, QTableWidgetItem(conn['process_name']))
+        try:
+            if hasattr(self, 'connection_table') and self.connection_table:
+                for conn in connections:
+                    row = self.connection_table.rowCount()
+                    self.connection_table.insertRow(row)
+                    self.connection_table.setItem(row, 0, QTableWidgetItem(conn['type']))
+                    self.connection_table.setItem(row, 1, QTableWidgetItem(conn['local_addr']))
+                    self.connection_table.setItem(row, 2, QTableWidgetItem(conn['remote_addr']))
+                    self.connection_table.setItem(row, 3, QTableWidgetItem(conn['status']))
+                    self.connection_table.setItem(row, 4, QTableWidgetItem(str(conn['pid'])))
+                    self.connection_table.setItem(row, 5, QTableWidgetItem(conn['process_name']))
+        except RuntimeError:
+            pass
     
     def connections_finished(self):
-        self.status_bar.showMessage("网络连接获取完成")
+        try:
+            self.status_bar.showMessage("网络连接获取完成")
+        except RuntimeError:
+            pass
     
     def start_dns_query(self):
         input_str = self.dns_domain_input.text()
@@ -1184,34 +1383,41 @@ class MainWindow(QMainWindow):
         self.dns_query_thread.start()
     
     def update_dns_query_result(self, result):
-        if result['error']:
-            self.dns_result.append(f"错误: {result['error']}")
-        else:
-            self.dns_result.append(f"查询对象: {result['input']}")
-            self.dns_result.append(f"记录类型: {result['record_type']}")
-            self.dns_result.append(f"查询结果:")
-            
-            if result['record_type'] == 'PTR':
-                for record in result['records']:
-                    self.dns_result.append(f"  域名: {record}")
-            elif result['record_type'] == 'MX':
-                for record in result['records']:
-                    self.dns_result.append(f"  优先级: {record['preference']}, 服务器: {record['exchange']}")
-            elif result['record_type'] == 'SOA':
-                for record in result['records']:
-                    self.dns_result.append(f"  主域名服务器: {record['mname']}")
-                    self.dns_result.append(f"  管理员邮箱: {record['rname']}")
-                    self.dns_result.append(f"  序列号: {record['serial']}")
-                    self.dns_result.append(f"  刷新时间: {record['refresh']}")
-                    self.dns_result.append(f"  重试时间: {record['retry']}")
-                    self.dns_result.append(f"  过期时间: {record['expire']}")
-                    self.dns_result.append(f"  最小TTL: {record['minimum']}")
-            else:
-                for record in result['records']:
-                    self.dns_result.append(f"  {record}")
+        try:
+            if hasattr(self, 'dns_result') and self.dns_result:
+                if result['error']:
+                    self.dns_result.append(f"错误: {result['error']}")
+                else:
+                    self.dns_result.append(f"查询对象: {result['input']}")
+                    self.dns_result.append(f"记录类型: {result['record_type']}")
+                    self.dns_result.append(f"查询结果:")
+                    
+                    if result['record_type'] == 'PTR':
+                        for record in result['records']:
+                            self.dns_result.append(f"  域名: {record}")
+                    elif result['record_type'] == 'MX':
+                        for record in result['records']:
+                            self.dns_result.append(f"  优先级: {record['preference']}, 服务器: {record['exchange']}")
+                    elif result['record_type'] == 'SOA':
+                        for record in result['records']:
+                            self.dns_result.append(f"  主域名服务器: {record['mname']}")
+                            self.dns_result.append(f"  管理员邮箱: {record['rname']}")
+                            self.dns_result.append(f"  序列号: {record['serial']}")
+                            self.dns_result.append(f"  刷新时间: {record['refresh']}")
+                            self.dns_result.append(f"  重试时间: {record['retry']}")
+                            self.dns_result.append(f"  过期时间: {record['expire']}")
+                            self.dns_result.append(f"  最小TTL: {record['minimum']}")
+                    else:
+                        for record in result['records']:
+                            self.dns_result.append(f"  {record}")
+        except RuntimeError:
+            pass
     
     def dns_query_finished(self):
-        self.status_bar.showMessage("DNS查询完成")
+        try:
+            self.status_bar.showMessage("DNS查询完成")
+        except RuntimeError:
+            pass
     
     def start_dns_resolve(self):
         input_str = self.dns_domain_input.text()
@@ -1229,22 +1435,29 @@ class MainWindow(QMainWindow):
         self.dns_resolve_thread.start()
     
     def update_dns_resolve_result(self, result):
-        if result['error']:
-            self.dns_result.append(f"错误: {result['error']}")
-        else:
-            self.dns_result.append(f"查询对象: {result['input']}")
-            self.dns_result.append(f"主机名/域名: {result['hostname']}")
-            if result['ipv4']:
-                self.dns_result.append("IPv4地址:")
-                for ip in result['ipv4']:
-                    self.dns_result.append(f"  {ip}")
-            if result['ipv6']:
-                self.dns_result.append("IPv6地址:")
-                for ip in result['ipv6']:
-                    self.dns_result.append(f"  {ip}")
+        try:
+            if hasattr(self, 'dns_result') and self.dns_result:
+                if result['error']:
+                    self.dns_result.append(f"错误: {result['error']}")
+                else:
+                    self.dns_result.append(f"查询对象: {result['input']}")
+                    self.dns_result.append(f"主机名/域名: {result['hostname']}")
+                    if result['ipv4']:
+                        self.dns_result.append("IPv4地址:")
+                        for ip in result['ipv4']:
+                            self.dns_result.append(f"  {ip}")
+                    if result['ipv6']:
+                        self.dns_result.append("IPv6地址:")
+                        for ip in result['ipv6']:
+                            self.dns_result.append(f"  {ip}")
+        except RuntimeError:
+            pass
     
     def dns_resolve_finished(self):
-        self.status_bar.showMessage("域名解析完成")
+        try:
+            self.status_bar.showMessage("域名解析完成")
+        except RuntimeError:
+            pass
     
     def scan_wifi(self):
         self.wifi_table.setRowCount(0)
@@ -1256,38 +1469,45 @@ class MainWindow(QMainWindow):
         self.wifi_scan_thread.start()
     
     def update_wifi_table(self, networks):
-        if not networks:
-            # 没有发现网络
-            row = self.wifi_table.rowCount()
-            self.wifi_table.insertRow(row)
-            self.wifi_table.setItem(row, 0, QTableWidgetItem('无可用WiFi网络'))
-            for i in range(1, 5):
-                self.wifi_table.setItem(row, i, QTableWidgetItem('N/A'))
-            return
-        
-        # 检查是否有错误信息
-        if len(networks) == 1 and 'error' in networks[0]:
-            error_message = networks[0]['error']
-            row = self.wifi_table.rowCount()
-            self.wifi_table.insertRow(row)
-            self.wifi_table.setItem(row, 0, QTableWidgetItem('错误'))
-            self.wifi_table.setItem(row, 1, QTableWidgetItem(error_message))
-            for i in range(2, 5):
-                self.wifi_table.setItem(row, i, QTableWidgetItem('N/A'))
-            return
-        
-        # 正常显示网络列表
-        for network in networks:
-            row = self.wifi_table.rowCount()
-            self.wifi_table.insertRow(row)
-            self.wifi_table.setItem(row, 0, QTableWidgetItem(network.get('ssid', 'Unknown')))
-            self.wifi_table.setItem(row, 1, QTableWidgetItem(network.get('bssid', 'Unknown')))
-            self.wifi_table.setItem(row, 2, QTableWidgetItem(network.get('signal', 'Unknown')))
-            self.wifi_table.setItem(row, 3, QTableWidgetItem(network.get('channel', 'Unknown')))
-            self.wifi_table.setItem(row, 4, QTableWidgetItem(network.get('security', 'Unknown')))
+        try:
+            if hasattr(self, 'wifi_table') and self.wifi_table:
+                if not networks:
+                    # 没有发现网络
+                    row = self.wifi_table.rowCount()
+                    self.wifi_table.insertRow(row)
+                    self.wifi_table.setItem(row, 0, QTableWidgetItem('无可用WiFi网络'))
+                    for i in range(1, 5):
+                        self.wifi_table.setItem(row, i, QTableWidgetItem('N/A'))
+                    return
+                
+                # 检查是否有错误信息
+                if len(networks) == 1 and 'error' in networks[0]:
+                    error_message = networks[0]['error']
+                    row = self.wifi_table.rowCount()
+                    self.wifi_table.insertRow(row)
+                    self.wifi_table.setItem(row, 0, QTableWidgetItem('错误'))
+                    self.wifi_table.setItem(row, 1, QTableWidgetItem(error_message))
+                    for i in range(2, 5):
+                        self.wifi_table.setItem(row, i, QTableWidgetItem('N/A'))
+                    return
+                
+                # 正常显示网络列表
+                for network in networks:
+                    row = self.wifi_table.rowCount()
+                    self.wifi_table.insertRow(row)
+                    self.wifi_table.setItem(row, 0, QTableWidgetItem(network.get('ssid', 'Unknown')))
+                    self.wifi_table.setItem(row, 1, QTableWidgetItem(network.get('bssid', 'Unknown')))
+                    self.wifi_table.setItem(row, 2, QTableWidgetItem(network.get('signal', 'Unknown')))
+                    self.wifi_table.setItem(row, 3, QTableWidgetItem(network.get('channel', 'Unknown')))
+                    self.wifi_table.setItem(row, 4, QTableWidgetItem(network.get('security', 'Unknown')))
+        except RuntimeError:
+            pass
     
     def wifi_scan_finished(self):
-        self.status_bar.showMessage("Wi-Fi扫描完成")
+        try:
+            self.status_bar.showMessage("Wi-Fi扫描完成")
+        except RuntimeError:
+            pass
     
     def start_snmp_query(self):
         host = self.snmp_host_input.text()
@@ -1308,15 +1528,22 @@ class MainWindow(QMainWindow):
         self.snmp_query_thread.start()
     
     def update_snmp_result(self, result):
-        if result['error']:
-            self.snmp_result.append(f"错误: {result['error']}")
-        else:
-            self.snmp_result.append(f"主机: {result['host']}")
-            self.snmp_result.append(f"OID: {result['oid']}")
-            self.snmp_result.append(f"值: {result['value']}")
+        try:
+            if hasattr(self, 'snmp_result') and self.snmp_result:
+                if result['error']:
+                    self.snmp_result.append(f"错误: {result['error']}")
+                else:
+                    self.snmp_result.append(f"主机: {result['host']}")
+                    self.snmp_result.append(f"OID: {result['oid']}")
+                    self.snmp_result.append(f"值: {result['value']}")
+        except RuntimeError:
+            pass
     
     def snmp_query_finished(self):
-        self.status_bar.showMessage("SNMP查询完成")
+        try:
+            self.status_bar.showMessage("SNMP查询完成")
+        except RuntimeError:
+            pass
     
     def get_snmp_device_info(self):
         host = self.snmp_host_input.text()
@@ -1336,39 +1563,25 @@ class MainWindow(QMainWindow):
         self.snmp_device_thread.start()
     
     def update_snmp_device_result(self, result):
-        if result.get('error'):
-            self.snmp_result.append(f"错误: {result['error']}")
-        else:
-            self.snmp_result.append(f"主机: {result['host']}")
-            self.snmp_result.append(f"系统描述: {result.get('sysDescr', 'N/A')}")
-            self.snmp_result.append(f"系统名称: {result.get('sysName', 'N/A')}")
-            self.snmp_result.append(f"系统位置: {result.get('sysLocation', 'N/A')}")
-            self.snmp_result.append(f"系统联系人: {result.get('sysContact', 'N/A')}")
-            self.snmp_result.append(f"运行时间: {result.get('sysUpTime', 'N/A')}")
+        try:
+            if hasattr(self, 'snmp_result') and self.snmp_result:
+                if result.get('error'):
+                    self.snmp_result.append(f"错误: {result['error']}")
+                else:
+                    self.snmp_result.append(f"主机: {result['host']}")
+                    self.snmp_result.append(f"系统描述: {result.get('sysDescr', 'N/A')}")
+                    self.snmp_result.append(f"系统名称: {result.get('sysName', 'N/A')}")
+                    self.snmp_result.append(f"系统位置: {result.get('sysLocation', 'N/A')}")
+                    self.snmp_result.append(f"系统联系人: {result.get('sysContact', 'N/A')}")
+                    self.snmp_result.append(f"运行时间: {result.get('sysUpTime', 'N/A')}")
+        except RuntimeError:
+            pass
     
     def snmp_device_finished(self):
-        self.status_bar.showMessage("设备信息获取完成")
-    
-    def get_vlan_info(self):
-        self.vlan_table.setRowCount(0)
-        self.status_bar.showMessage("正在获取VLAN信息...")
-        
-        self.vlan_thread = VLANInfoThread()
-        self.vlan_thread.result_signal.connect(self.update_vlan_table)
-        self.vlan_thread.finished_signal.connect(self.vlan_finished)
-        self.vlan_thread.start()
-    
-    def update_vlan_table(self, vlans):
-        for vlan in vlans:
-            row = self.vlan_table.rowCount()
-            self.vlan_table.insertRow(row)
-            self.vlan_table.setItem(row, 0, QTableWidgetItem(vlan.get('name', 'Unknown')))
-            self.vlan_table.setItem(row, 1, QTableWidgetItem(str(vlan.get('vlan_id', 'N/A'))))
-            self.vlan_table.setItem(row, 2, QTableWidgetItem(vlan.get('interface', 'Unknown')))
-            self.vlan_table.setItem(row, 3, QTableWidgetItem(vlan.get('status', 'Unknown')))
-    
-    def vlan_finished(self):
-        self.status_bar.showMessage("VLAN信息获取完成")
+        try:
+            self.status_bar.showMessage("设备信息获取完成")
+        except RuntimeError:
+            pass
     
     def create_network_topology_content(self):
         """创建网络拓扑图内容页"""
@@ -1439,6 +1652,8 @@ class MainWindow(QMainWindow):
     def show_network_topology_page(self):
         """显示网络拓扑图页面"""
         self.clear_content()
+        # 重新创建页面，因为之前的页面可能已被删除
+        self.network_topology_page = self.create_network_topology_content()
         self.content_layout.addWidget(self.network_topology_page)
     
     def generate_network_topology(self):
@@ -1464,51 +1679,65 @@ class MainWindow(QMainWindow):
     
     def update_topology_progress(self, message):
         """更新拓扑生成进度"""
-        self.topology_result.append(message)
+        try:
+            if hasattr(self, 'topology_result') and self.topology_result:
+                self.topology_result.append(message)
+        except RuntimeError:
+            pass
     
     def topology_generation_finished(self, graph):
         """拓扑生成完成"""
-        if graph:
-            # 获取拓扑数据
-            topology_data = self.topology_generator.get_topology_data()
-            
-            # 清空之前的内容
-            self.topology_result.clear()
-            
-            # 显示流程图
-            flowchart = topology_data.get('flowchart', '')
-            if flowchart:
-                # 设置等宽字体以正确显示流程图
-                self.topology_result.setStyleSheet("""
-                    QTextEdit {
-                        font-family: 'Courier New', 'Consolas', monospace;
-                        font-size: 10pt;
-                        background-color: #f8f9fa;
-                    }
-                """)
-                self.topology_result.setPlainText(flowchart)
+        try:
+            if graph:
+                # 获取拓扑数据
+                topology_data = self.topology_generator.get_topology_data()
                 
-                # 右侧显示提示信息
-                self.topology_image_label.setText("流程图已生成\n\n流程图显示在左侧区域\n\n包含：\n• 网络拓扑结构\n• 路由节点信息\n• 延迟数据")
-                self.topology_image_label.setStyleSheet("""
-                    QLabel {
-                        background-color: #e8f5e9;
-                        border: 2px solid #4caf50;
-                        border-radius: 8px;
-                        padding: 20px;
-                        font-size: 12pt;
-                        color: #2e7d32;
-                    }
-                """)
+                # 清空之前的内容
+                if hasattr(self, 'topology_result') and self.topology_result:
+                    self.topology_result.clear()
+                
+                # 显示流程图
+                flowchart = topology_data.get('flowchart', '')
+                if flowchart:
+                    # 设置等宽字体以正确显示流程图
+                    if hasattr(self, 'topology_result') and self.topology_result:
+                        self.topology_result.setStyleSheet("""
+                            QTextEdit {
+                                font-family: 'Courier New', 'Consolas', monospace;
+                                font-size: 10pt;
+                                background-color: #f8f9fa;
+                            }
+                        """)
+                        self.topology_result.setPlainText(flowchart)
+                    
+                    # 右侧显示提示信息
+                    if hasattr(self, 'topology_image_label') and self.topology_image_label:
+                        self.topology_image_label.setText("流程图已生成\n\n流程图显示在左侧区域\n\n包含：\n• 网络拓扑结构\n• 路由节点信息\n• 延迟数据")
+                        self.topology_image_label.setStyleSheet("""
+                            QLabel {
+                                background-color: #e8f5e9;
+                                border: 2px solid #4caf50;
+                                border-radius: 8px;
+                                padding: 20px;
+                                font-size: 12pt;
+                                color: #2e7d32;
+                            }
+                        """)
+                else:
+                    if hasattr(self, 'topology_result') and self.topology_result:
+                        self.topology_result.append("[错误] 流程图生成失败")
+                    if hasattr(self, 'topology_image_label') and self.topology_image_label:
+                        self.topology_image_label.setText("流程图生成失败，请检查目标IP地址")
             else:
-                self.topology_result.append("[错误] 流程图生成失败")
-                self.topology_image_label.setText("流程图生成失败，请检查目标IP地址")
-        else:
-            self.topology_result.clear()
-            self.topology_result.append("[错误] 拓扑生成失败")
-            self.topology_image_label.setText("拓扑生成失败，请检查目标IP地址")
-        
-        self.status_bar.showMessage("网络拓扑图生成完成")
+                if hasattr(self, 'topology_result') and self.topology_result:
+                    self.topology_result.clear()
+                    self.topology_result.append("[错误] 拓扑生成失败")
+                if hasattr(self, 'topology_image_label') and self.topology_image_label:
+                    self.topology_image_label.setText("拓扑生成失败，请检查目标IP地址")
+            
+            self.status_bar.showMessage("网络拓扑图生成完成")
+        except RuntimeError:
+            pass
     
     def create_subnet_calculator_content(self):
         """创建子网计算器内容页"""
@@ -1649,6 +1878,8 @@ class MainWindow(QMainWindow):
     def show_network_diagnostic_page(self):
         """显示网络诊断页面"""
         self.clear_content()
+        # 重新创建页面，因为之前的页面可能已被删除
+        self.network_diagnostic_page = self.create_network_diagnostic_content()
         self.content_layout.addWidget(self.network_diagnostic_page)
     
     def start_batch_ping(self):
@@ -1684,80 +1915,98 @@ class MainWindow(QMainWindow):
     
     def update_diagnostic_progress(self, message):
         """更新诊断进度"""
-        self.diagnostic_result.append(message)
+        try:
+            if hasattr(self, 'diagnostic_result') and self.diagnostic_result:
+                self.diagnostic_result.append(message)
+        except RuntimeError:
+            pass
     
     def update_batch_ping_result(self, results):
         """更新批量Ping结果"""
-        self.diagnostic_result.append("\n📊 批量Ping测试结果:")
-        
-        if '在线' in results:
-            self.diagnostic_result.append("\n✅ 在线主机:")
-            for ip, result in results['在线']:
-                self.diagnostic_result.append(f"  • {ip} - 响应时间: {result['time']}ms - 丢包率: {result['packet_loss']}%")
-        
-        if '离线' in results:
-            self.diagnostic_result.append("\n❌ 离线主机:")
-            for ip, result in results['离线']:
-                self.diagnostic_result.append(f"  • {ip}")
-        
-        if '超时' in results:
-            self.diagnostic_result.append("\n⏱️ 超时主机:")
-            for ip, result in results['超时']:
-                self.diagnostic_result.append(f"  • {ip}")
-        
-        if '错误' in results:
-            self.diagnostic_result.append("\n⚠️ 错误主机:")
-            for ip, result in results['错误']:
-                self.diagnostic_result.append(f"  • {ip} - 错误: {result['error']}")
+        try:
+            if hasattr(self, 'diagnostic_result') and self.diagnostic_result:
+                self.diagnostic_result.append("\n📊 批量Ping测试结果:")
+                
+                if '在线' in results:
+                    self.diagnostic_result.append("\n✅ 在线主机:")
+                    for ip, result in results['在线']:
+                        self.diagnostic_result.append(f"  • {ip} - 响应时间: {result['time']}ms - 丢包率: {result['packet_loss']}%")
+                
+                if '离线' in results:
+                    self.diagnostic_result.append("\n❌ 离线主机:")
+                    for ip, result in results['离线']:
+                        self.diagnostic_result.append(f"  • {ip}")
+                
+                if '超时' in results:
+                    self.diagnostic_result.append("\n⏱️ 超时主机:")
+                    for ip, result in results['超时']:
+                        self.diagnostic_result.append(f"  • {ip}")
+                
+                if '错误' in results:
+                    self.diagnostic_result.append("\n⚠️ 错误主机:")
+                    for ip, result in results['错误']:
+                        self.diagnostic_result.append(f"  • {ip} - 错误: {result['error']}")
+        except RuntimeError:
+            pass
     
     def update_diagnostic_result(self, results):
         """更新网络诊断结果"""
-        self.diagnostic_result.append("\n📋 网络诊断结果:")
-        
-        # 总体状态
-        overall = results.get('overall', {})
-        self.diagnostic_result.append(f"\n🎯 总体状态: {overall.get('status', '未知')}")
-        
-        if overall.get('issues'):
-            self.diagnostic_result.append("\n⚠️ 发现问题:")
-            for issue in overall.get('issues', []):
-                self.diagnostic_result.append(f"  • {issue}")
-        
-        # DNS测试
-        dns = results.get('dns', {})
-        self.diagnostic_result.append("\n🌐 DNS解析测试:")
-        self.diagnostic_result.append(f"  状态: {'正常' if dns.get('status') else '异常'}")
-        if dns.get('resolved_servers'):
-            self.diagnostic_result.append(f"  可用DNS服务器: {len(dns['resolved_servers'])}/{dns['total_servers']}")
-        
-        # 网关测试
-        gateway = results.get('gateway', {})
-        self.diagnostic_result.append("\n🏠 网关连接测试:")
-        self.diagnostic_result.append(f"  状态: {'正常' if gateway.get('status') else '异常'}")
-        if gateway.get('gateway'):
-            self.diagnostic_result.append(f"  网关地址: {gateway['gateway']}")
-        
-        # 互联网测试
-        internet = results.get('internet', {})
-        self.diagnostic_result.append("\n🌍 互联网连接测试:")
-        self.diagnostic_result.append(f"  状态: {'正常' if internet.get('status') else '异常'}")
-        if internet.get('reachable_hosts'):
-            self.diagnostic_result.append(f"  可访问主机: {len(internet['reachable_hosts'])}/{internet['total_hosts']}")
-        
-        # 延迟测试
-        latency = results.get('latency', {})
-        self.diagnostic_result.append("\n⏱️ 网络延迟测试:")
-        self.diagnostic_result.append(f"  状态: {'正常' if latency.get('status') else '异常'}")
-        if latency.get('avg_latency'):
-            self.diagnostic_result.append(f"  平均延迟: {latency['avg_latency']}ms")
+        try:
+            if hasattr(self, 'diagnostic_result') and self.diagnostic_result:
+                self.diagnostic_result.append("\n📋 网络诊断结果:")
+                
+                # 总体状态
+                overall = results.get('overall', {})
+                self.diagnostic_result.append(f"\n🎯 总体状态: {overall.get('status', '未知')}")
+                
+                if overall.get('issues'):
+                    self.diagnostic_result.append("\n⚠️ 发现问题:")
+                    for issue in overall.get('issues', []):
+                        self.diagnostic_result.append(f"  • {issue}")
+                
+                # DNS测试
+                dns = results.get('dns', {})
+                self.diagnostic_result.append("\n🌐 DNS解析测试:")
+                self.diagnostic_result.append(f"  状态: {'正常' if dns.get('status') else '异常'}")
+                if dns.get('resolved_servers'):
+                    self.diagnostic_result.append(f"  可用DNS服务器: {len(dns['resolved_servers'])}/{dns['total_servers']}")
+                
+                # 网关测试
+                gateway = results.get('gateway', {})
+                self.diagnostic_result.append("\n🏠 网关连接测试:")
+                self.diagnostic_result.append(f"  状态: {'正常' if gateway.get('status') else '异常'}")
+                if gateway.get('gateway'):
+                    self.diagnostic_result.append(f"  网关地址: {gateway['gateway']}")
+                
+                # 互联网测试
+                internet = results.get('internet', {})
+                self.diagnostic_result.append("\n🌍 互联网连接测试:")
+                self.diagnostic_result.append(f"  状态: {'正常' if internet.get('status') else '异常'}")
+                if internet.get('reachable_hosts'):
+                    self.diagnostic_result.append(f"  可访问主机: {len(internet['reachable_hosts'])}/{internet['total_hosts']}")
+                
+                # 延迟测试
+                latency = results.get('latency', {})
+                self.diagnostic_result.append("\n⏱️ 网络延迟测试:")
+                self.diagnostic_result.append(f"  状态: {'正常' if latency.get('status') else '异常'}")
+                if latency.get('avg_latency'):
+                    self.diagnostic_result.append(f"  平均延迟: {latency['avg_latency']}ms")
+        except RuntimeError:
+            pass
     
     def batch_ping_finished(self):
         """批量Ping测试完成"""
-        self.status_bar.showMessage("批量Ping测试完成")
+        try:
+            self.status_bar.showMessage("批量Ping测试完成")
+        except RuntimeError:
+            pass
     
     def diagnostic_finished(self):
         """网络诊断完成"""
-        self.status_bar.showMessage("网络诊断完成")
+        try:
+            self.status_bar.showMessage("网络诊断完成")
+        except RuntimeError:
+            pass
     
     def create_ai_assistant_content(self):
         """创建智能助手内容页"""
@@ -1780,14 +2029,14 @@ class MainWindow(QMainWindow):
         # API Key输入
         config_layout.addWidget(QLabel("API Key:"), 1, 0)
         self.ai_api_key_input = QLineEdit()
-        self.ai_api_key_input.setPlaceholderText("请输入豆包/火山引擎API Key (可选，不填则使用本地知识库)")
+        self.ai_api_key_input.setPlaceholderText("请输入豆包/火山引擎API Key")
         self.ai_api_key_input.setEchoMode(QLineEdit.Password)
         config_layout.addWidget(self.ai_api_key_input, 1, 1)
         
-        # 使用云端模型选项
-        self.use_cloud_model_checkbox = QCheckBox("使用云端AI模型")
-        self.use_cloud_model_checkbox.setChecked(False)  # 默认使用本地知识库
-        config_layout.addWidget(self.use_cloud_model_checkbox, 2, 0, 1, 2)
+        # API Key说明
+        api_key_info = QLabel("<a href='https://console.volces.com/'>获取API Key</a>")
+        api_key_info.setOpenExternalLinks(True)
+        config_layout.addWidget(api_key_info, 2, 1)
         
         # 保存配置按钮
         save_config_btn = QPushButton("保存配置")
@@ -1855,7 +2104,6 @@ class MainWindow(QMainWindow):
         suggestion_group.setLayout(suggestion_layout)
         
         # 添加到主布局
-        layout.addWidget(config_group)
         layout.addWidget(assistant_group)
         layout.addWidget(suggestion_group)
         
@@ -1869,6 +2117,8 @@ class MainWindow(QMainWindow):
     def show_ai_assistant_page(self):
         """显示智能助手页面"""
         self.clear_content()
+        # 重新创建页面，因为之前的页面可能已被删除
+        self.ai_assistant_page = self.create_ai_assistant_content()
         self.content_layout.addWidget(self.ai_assistant_page)
     
     def send_suggestion(self, suggestion):
@@ -1881,15 +2131,11 @@ class MainWindow(QMainWindow):
         config = {
             'model': self.ai_model_combo.currentData(),
             'api_key': self.ai_api_key_input.text().strip(),
-            'use_cloud_model': self.use_cloud_model_checkbox.isChecked()
+            'use_cloud_model': True
         }
         
         # 保存到设置
         self.settings.setValue("ai_config", config)
-        
-        # 更新AI助手配置
-        if hasattr(self, 'ai_assistant'):
-            self.ai_assistant.update_config(config)
         
         QMessageBox.information(self, "配置保存", "AI配置已保存！")
     
@@ -1906,9 +2152,6 @@ class MainWindow(QMainWindow):
             
             # 设置API Key
             self.ai_api_key_input.setText(config.get('api_key', ''))
-            
-            # 设置云端模型选项
-            self.use_cloud_model_checkbox.setChecked(config.get('use_cloud_model', True))
     
     def send_ai_query(self):
         """发送智能助手查询"""
@@ -1927,7 +2170,7 @@ class MainWindow(QMainWindow):
         config = {
             'model': self.ai_model_combo.currentData(),
             'api_key': self.ai_api_key_input.text().strip(),
-            'use_cloud_model': self.use_cloud_model_checkbox.isChecked()
+            'use_cloud_model': True
         }
         
         # 创建智能助手
@@ -1941,19 +2184,226 @@ class MainWindow(QMainWindow):
     
     def update_ai_response(self, response):
         """更新智能助手响应"""
-        self.ai_chat.append(f"[AI] {response}")
-        self.ai_chat.append("")
+        try:
+            if hasattr(self, 'ai_chat') and self.ai_chat:
+                self.ai_chat.append(f"[AI] {response}")
+                self.ai_chat.append("")
+        except RuntimeError:
+            pass
     
     def update_ai_error(self, error):
         """更新智能助手错误"""
-        self.ai_chat.append(f"[系统] {error}")
-        self.ai_chat.append("")
+        try:
+            if hasattr(self, 'ai_chat') and self.ai_chat:
+                self.ai_chat.append(f"[系统] {error}")
+                self.ai_chat.append("")
+        except RuntimeError:
+            pass
     
     def ai_query_finished(self):
         """智能助手查询完成"""
-        self.status_bar.showMessage("智能助手查询完成")
-    
+        try:
+            self.status_bar.showMessage("智能助手查询完成")
+        except RuntimeError:
+            pass
+
+    # ==================== 抓包分析功能 ====================
+    def start_packet_capture(self):
+        """开始抓包"""
+        try:
+            # 获取过滤条件
+            protocol = self.capture_protocol_combo.currentData()
+            port_text = self.capture_port_input.text().strip()
+            port = int(port_text) if port_text else None
+
+            # 清空表格
+            self.packet_table.setRowCount(0)
+
+            # 创建抓包线程
+            self.capture_thread = PacketCaptureThread(
+                filter_protocol=protocol,
+                filter_port=port
+            )
+            self.capture_thread.packet_signal.connect(self.update_packet_table)
+            self.capture_thread.stats_signal.connect(self.update_capture_stats)
+            self.capture_thread.error_signal.connect(self.update_capture_error)
+            self.capture_thread.start()
+
+            # 更新按钮状态
+            self.start_capture_button.setEnabled(False)
+            self.stop_capture_button.setEnabled(True)
+            self.status_bar.showMessage("正在抓包...")
+
+        except Exception as e:
+            QMessageBox.warning(self, "错误", f"启动抓包失败: {str(e)}")
+
+    def stop_packet_capture(self):
+        """停止抓包"""
+        try:
+            if hasattr(self, 'capture_thread') and self.capture_thread:
+                self.capture_thread.stop()
+                self.capture_thread = None
+
+            self.start_capture_button.setEnabled(True)
+            self.stop_capture_button.setEnabled(False)
+            self.status_bar.showMessage("抓包已停止")
+        except RuntimeError:
+            pass
+
+    def clear_packet_capture(self):
+        """清空抓包数据"""
+        try:
+            if hasattr(self, 'packet_table') and self.packet_table:
+                self.packet_table.setRowCount(0)
+            if hasattr(self, 'capture_count_label') and self.capture_count_label:
+                self.capture_count_label.setText("数据包: 0")
+            if hasattr(self, 'capture_bytes_label') and self.capture_bytes_label:
+                self.capture_bytes_label.setText("字节数: 0")
+        except RuntimeError:
+            pass
+
+    def update_packet_table(self, packet_info):
+        """更新数据包表格"""
+        try:
+            if hasattr(self, 'packet_table') and self.packet_table:
+                row = self.packet_table.rowCount()
+                self.packet_table.insertRow(row)
+                self.packet_table.setItem(row, 0, QTableWidgetItem(packet_info.get('timestamp', '')))
+                self.packet_table.setItem(row, 1, QTableWidgetItem(packet_info.get('source_ip', '')))
+                self.packet_table.setItem(row, 2, QTableWidgetItem(packet_info.get('dest_ip', '')))
+                self.packet_table.setItem(row, 3, QTableWidgetItem(packet_info.get('protocol', '')))
+                self.packet_table.setItem(row, 4, QTableWidgetItem(str(packet_info.get('source_port', ''))))
+                self.packet_table.setItem(row, 5, QTableWidgetItem(str(packet_info.get('dest_port', ''))))
+                self.packet_table.setItem(row, 6, QTableWidgetItem(packet_info.get('info', '')))
+
+                # 滚动到最新行
+                self.packet_table.scrollToBottom()
+        except RuntimeError:
+            pass
+
+    def update_capture_stats(self, stats):
+        """更新抓包统计"""
+        try:
+            if hasattr(self, 'capture_count_label') and self.capture_count_label:
+                self.capture_count_label.setText(f"数据包: {stats.get('packet_count', 0)}")
+            if hasattr(self, 'capture_bytes_label') and self.capture_bytes_label:
+                self.capture_bytes_label.setText(f"字节数: {stats.get('byte_count', 0)}")
+        except RuntimeError:
+            pass
+
+    def update_capture_error(self, error):
+        """更新抓包错误"""
+        try:
+            self.status_bar.showMessage(f"抓包错误: {error}")
+            # 恢复按钮状态
+            self.start_capture_button.setEnabled(True)
+            self.stop_capture_button.setEnabled(False)
+            # 显示错误弹窗
+            QMessageBox.warning(self, "抓包错误", error)
+        except RuntimeError:
+            pass
+
+    # ==================== HTTP监控功能 ====================
+    def start_http_watch(self):
+        """启动HTTP监控"""
+        try:
+            port = self.http_proxy_port.value()
+            host_filter = self.http_host_filter.text().strip() or None
+
+            # 清空表格
+            self.http_table.setRowCount(0)
+
+            # 创建HTTP监控线程
+            self.http_watch_thread = HTTPWatchThread(
+                port=port,
+                filter_host=host_filter
+            )
+            self.http_watch_thread.request_signal.connect(self.update_http_table)
+            self.http_watch_thread.stats_signal.connect(self.update_http_stats)
+            self.http_watch_thread.error_signal.connect(self.update_http_error)
+            self.http_watch_thread.start()
+
+            # 更新按钮状态
+            self.start_http_button.setEnabled(False)
+            self.stop_http_button.setEnabled(True)
+
+            # 更新代理信息
+            proxy_addr = f"127.0.0.1:{port}"
+            self.http_proxy_info.setText(f"代理地址: {proxy_addr}\n请在浏览器中设置HTTP代理为上述地址")
+            self.status_bar.showMessage(f"HTTP代理已启动: {proxy_addr}")
+
+        except Exception as e:
+            QMessageBox.warning(self, "错误", f"启动HTTP代理失败: {str(e)}")
+
+    def stop_http_watch(self):
+        """停止HTTP监控"""
+        try:
+            if hasattr(self, 'http_watch_thread') and self.http_watch_thread:
+                self.http_watch_thread.stop()
+                self.http_watch_thread = None
+
+            self.start_http_button.setEnabled(True)
+            self.stop_http_button.setEnabled(False)
+            self.status_bar.showMessage("HTTP代理已停止")
+        except RuntimeError:
+            pass
+
+    def clear_http_watch(self):
+        """清空HTTP监控数据"""
+        try:
+            if hasattr(self, 'http_table') and self.http_table:
+                self.http_table.setRowCount(0)
+        except RuntimeError:
+            pass
+
+    def update_http_table(self, request_info):
+        """更新HTTP请求表格"""
+        try:
+            if hasattr(self, 'http_table') and self.http_table:
+                row = self.http_table.rowCount()
+                self.http_table.insertRow(row)
+                self.http_table.setItem(row, 0, QTableWidgetItem(str(request_info.get('id', ''))))
+                self.http_table.setItem(row, 1, QTableWidgetItem(request_info.get('timestamp', '')))
+                self.http_table.setItem(row, 2, QTableWidgetItem(request_info.get('method', '')))
+                self.http_table.setItem(row, 3, QTableWidgetItem(request_info.get('url', '')))
+                self.http_table.setItem(row, 4, QTableWidgetItem(str(request_info.get('status_code', ''))))
+                self.http_table.setItem(row, 5, QTableWidgetItem(f"{request_info.get('response_size', 0)}"))
+                self.http_table.setItem(row, 6, QTableWidgetItem(str(request_info.get('duration', ''))))
+
+                # 根据状态码设置颜色
+                status_code = request_info.get('status_code', 0)
+                if status_code >= 200 and status_code < 300:
+                    self.http_table.item(row, 4).setForeground(QColor("green"))
+                elif status_code >= 400:
+                    self.http_table.item(row, 4).setForeground(QColor("red"))
+
+                # 滚动到最新行
+                self.http_table.scrollToBottom()
+        except RuntimeError:
+            pass
+
+    def update_http_stats(self, stats):
+        """更新HTTP统计"""
+        try:
+            request_count = stats.get('request_count', 0)
+            self.status_bar.showMessage(f"HTTP请求数: {request_count}")
+        except RuntimeError:
+            pass
+
+    def update_http_error(self, error):
+        """更新HTTP错误"""
+        try:
+            self.status_bar.showMessage(f"HTTP监控错误: {error}")
+        except RuntimeError:
+            pass
+
     def closeEvent(self, event):
+        """关闭事件处理"""
+        # 停止所有监控线程
+        if hasattr(self, 'capture_thread') and self.capture_thread:
+            self.capture_thread.stop()
+        if hasattr(self, 'http_watch_thread') and self.http_watch_thread:
+            self.http_watch_thread.stop()
         if self.monitor_thread:
             self.monitor_thread.stop()
         self.save_window_state()
