@@ -2,9 +2,8 @@ name: Build Windows Executable
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 jobs:
@@ -13,39 +12,26 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
-    
+      uses: actions/checkout@v3
+      
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v4
       with:
-        python-version: '3.11'
-    
+        python-version: '3.9'
+        
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
         pip install pyinstaller
-    
-    - name: Build executable
+        pip install -r requirements.txt
+        
+    - name: Build with PyInstaller
       run: |
-        pyinstaller --clean `
-          --name="网络故障排查工具" `
-          --windowed `
-          --onefile `
-          --add-data="data;data" `
-          --add-data="网络故障排查指导文档.md;." `
-          --hidden-import="PyQt5.QtCore" `
-          --hidden-import="PyQt5.QtGui" `
-          --hidden-import="PyQt5.QtWidgets" `
-          --hidden-import="psutil" `
-          --hidden-import="dns.resolver" `
-          --hidden-import="requests" `
-          --hidden-import="speedtest" `
-          run.py
-    
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
+        pyinstaller --clean network_tool.spec
+        
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
       with:
-        name: network-tool-windows
-        path: dist/网络故障排查工具.exe
-        retention-days: 30
+        name: network-tool-windows-v${{ github.run_number }}
+        path: dist/网络故障排查工具/
+        retention-days: 90
