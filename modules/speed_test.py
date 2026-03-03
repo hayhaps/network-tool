@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-网络速度测试模块
+网络速度测试模块（修复版本）
 功能：带宽测试、延迟测试
 """
 
@@ -9,7 +9,6 @@ import time
 import socket
 import urllib.request
 import json
-import speedtest
 from PyQt5.QtCore import QThread, pyqtSignal
 
 
@@ -84,6 +83,10 @@ class SpeedTestThread(QThread):
             self.progress_signal.emit(f"🌍 公网IP: {self.public_ip_info['ip']}")
             self.progress_signal.emit(f"📡 运营商: {self.public_ip_info['isp']}")
             self.progress_signal.emit(f"📍 位置: {self.public_ip_info['city']}, {self.public_ip_info['region']}, {self.public_ip_info['country']}")
+            
+            # 导入speedtest模块
+            import importlib
+            speedtest = importlib.import_module('speedtest')
             
             st = speedtest.Speedtest()
             
